@@ -1,15 +1,20 @@
 import { createSignal } from "solid-js";
+import { createStore, produce, reconcile } from "solid-js/store";
 import type { Note, NoteWithContent, Notebook, Tag } from "../types";
 import * as api from "../lib/tauri";
 
 // ── État ───────────────────────────────────────────────
-const [notes, setNotes]             = createSignal<Note[]>([]);
-const [notebooks, setNotebooks]     = createSignal<Notebook[]>([]);
-const [tags, setTags]               = createSignal<Tag[]>([]);
-const [activeNote, setActiveNote]   = createSignal<NoteWithContent | null>(null);
-const [loading, setLoading]         = createSignal(false);
+const [notes, setNotes] = createStore<Note[]>([]);
+const [notebooks, setNotebooks] = createStore<Notebook[]>([]);
+const [tags, setTags] = createStore<Tag[]>([]);
+const [activeNote, setActiveNote] = createSignal<NoteWithContent | null>(null);
+const [loading, setLoading] = createSignal(false);
 
-export { notes, notebooks, tags, activeNote, loading };
+const [error, setError] = createSignal<string | null>(null);
+
+export { notes, notebooks, tags, activeNote, loading, error };
+
+let currentSearchId = 0;
 
 // ── Chargement initial ─────────────────────────────────
 export const loadAll = async () => {
@@ -20,9 +25,12 @@ export const loadAll = async () => {
       api.getNotebooks(),
       api.getTags(),
     ]);
-    setNotes(n);
-    setNotebooks(nb);
-    setTags(t);
+    setNotes(reconcile(n));
+    setNotebooks(reconcile(nb));
+    setTags(reconcile(t));
+  } catch (e) {
+    console.error("Échec du chargement initial :", e);
+    setError("Impossible de charger les données.");
   } finally {
     setLoading(false);
   }
@@ -30,63 +38,167 @@ export const loadAll = async () => {
 
 // ── Notes ──────────────────────────────────────────────
 export const loadNotes = async (notebook_id?: string, trashed = false) => {
-  const n = await api.getNotes(notebook_id, trashed);
-  setNotes(n);
+  setError(null);
+  try {
+    const n = await api.getNotes(notebook_id, trashed);
+    setNotes(reconcile(n));
+  } catch (err) {
+    console.error("Erreur loadNotes :", err);
+    setError("Impossible de charger les notes.");
+  }
 };
 
 export const openNote = async (id: string) => {
-  const note = await api.getNote(id);
-  setActiveNote(note);
+  setError(null);
+  try {
+    const note = await api.getNote(id);
+    setActiveNote(note);
+  } catch (err) {
+    console.error("Erreur openNote :", err);
+    setError("Impossible d'ouvrir la note.");
+  }
 };
 
 export const newNote = async (notebook_id?: string) => {
-  const note = await api.createNote(notebook_id);
-  setNotes(prev => [note, ...prev]);
-  setActiveNote(note);
-  return note;
+  setError(null);
+  try {
+    const note = await api.createNote(notebook_id);
+    setNotes(produce(notes => notes.unshift(note)));
+    setActiveNote(note);
+    return note;
+  } catch (err) {
+    console.error("Erreur newNote :", err);
+    setError("La création de la note a échoué.");
+    return null;
+  }
 };
 
 export const saveNote = async (
   id: string,
   payload: { title?: string; content?: string; is_pinned?: boolean }
 ) => {
-  const updated = await api.updateNote(id, payload);
-  // Met à jour la note dans la liste
-  setNotes(prev =>
-    prev.map(n => n.id === id ? { ...n, ...updated } : n)
-  );
-  // Met à jour la note active si c'est la même
-  if (activeNote()?.id === id) {
-    setActiveNote(updated);
+  setError(null);
+  try {
+    const updated = await api.updateNote(id, payload);
+
+    const index = notes.findIndex(n => n.id === id);
+    if (index !== -1) {
+      setNotes(index, {
+        title: updated.title,
+        excerpt: updated.excerpt,
+        word_count: updated.word_count,
+        is_pinned: updated.is_pinned,
+        updated_at: updated.updated_at,
+      });
+    }
+
+    if (activeNote()?.id === id) {
+      setActiveNote(prev => prev ? { ...prev, ...updated } : null);
+    }
+
+    return updated;
+  } catch (err) {
+    console.error("Erreur saveNote:", err);
+    // On throw l'erreur ici pour que ton hook `useAutoSave` puisse 
+    // potentiellement l'attraper et afficher un statut "Échec de sauvegarde"
+    throw err;
   }
-  return updated;
 };
 
-export const trashActiveNote = async () => {
-  const note = activeNote();
-  if (!note) return;
-  await api.trashNote(note.id);
-  setNotes(prev => prev.filter(n => n.id !== note.id));
-  setActiveNote(null);
+export const trashActiveNote = async (id: string) => {
+  if (!id) return;
+
+  setError(null);
+  try {
+    await api.trashNote(id);
+    setNotes(produce(notes => {
+      const i = notes.findIndex(n => n.id === id);
+      if (i !== -1) notes.splice(i, 1);
+    }));
+    setActiveNote(null);
+  } catch (err) {
+    console.error("Erreur trashActiveNote:", err);
+    setError("Impossible de mettre la note à la corbeille.");
+  }
 };
 
-export const searchQuery = async (query: string) => {
+export const restoreNote = async (id: string) => {
+  setError(null);
+  try {
+    await api.restoreNote(id);
+    await loadNotes(undefined, true);
+  } catch (err) {
+    console.error("Erreur restoreNote:", err);
+    setError("Impossible de restaurer la note.");
+  }
+};
+
+export const deleteNote = async (id: string) => {
+  setError(null);
+  try {
+    await api.deleteNote(id);
+    setNotes(produce(notes => {
+      const i = notes.findIndex(n => n.id === id);
+      if (i !== -1) notes.splice(i, 1);
+    }));
+    if (activeNote()?.id === id) setActiveNote(null);
+  } catch (err) {
+    console.error("Erreur deleteNote:", err);
+    setError("Impossible de supprimer la note.");
+  }
+};
+
+export const searchNotes = async (query: string) => {
+  const searchId = ++currentSearchId;
+
   if (!query.trim()) {
     await loadNotes();
     return;
   }
-  const results = await api.searchNotes(query);
-  setNotes(results);
+
+  setError(null);
+  try {
+    const results = await api.searchNotes(query);
+
+    if (searchId === currentSearchId) {
+      return;
+    }
+
+    setNotes(reconcile(results));
+  } catch (err) {
+    console.error("Erreur searchNotes:", err);
+    setError("La recherche a échoué.");
+  }
 };
+
+export const cancelSearch: () => void = () => {
+  currentSearchId++;
+}
 
 // ── Notebooks ──────────────────────────────────────────
 export const newNotebook = async (name: string) => {
-  const nb = await api.createNotebook(name);
-  setNotebooks(prev => [...prev, nb]);
-  return nb;
+  setError(null);
+  try {
+    const nb = await api.createNotebook(name);
+    setNotebooks(produce(nbs => nbs.push(nb)));
+    return nb;
+  } catch (err) {
+    console.error("Erreur newNotebook:", err);
+    setError("La création du carnet a échoué.");
+    return null;
+  }
 };
 
 export const removeNotebook = async (id: string) => {
-  await api.deleteNotebook(id);
-  setNotebooks(prev => prev.filter(nb => nb.id !== id));
+  setError(null);
+  try {
+    await api.deleteNotebook(id);
+    setNotebooks(produce(nbs => {
+      const i = nbs.findIndex(nb => nb.id === id);
+      if (i !== -1) nbs.splice(i, 1);
+    }));
+  } catch (err) {
+    console.error("Erreur removeNotebook:", err);
+    setError("La suppression du carnet a échoué.");
+  }
 };

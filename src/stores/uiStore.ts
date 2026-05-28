@@ -1,8 +1,16 @@
 import { createSignal } from "solid-js";
 import type { EditorMode, SidebarView } from "../types";
 
+// UI State global
+const [showListNotes, setShowListNotes] = createSignal<boolean>(true);
+export { showListNotes, setShowListNotes };
+
+
 // Thème
 const [theme, setTheme] = createSignal<"light" | "dark">("light");
+
+const [tooltip, setTooltip] = createSignal<string | null>(null);
+export { tooltip, setTooltip };
 
 export const toggleTheme = () => {
   const next = theme() === "light" ? "dark" : "light";

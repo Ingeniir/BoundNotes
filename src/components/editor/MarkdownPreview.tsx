@@ -24,7 +24,7 @@ export function MarkdownPreview() {
   return (
     <div class="h-full overflow-y-auto px-8 py-6">
       <div
-        class="prose prose-gray max-w-none"
+        class="prose prose-gray max-w-none wrap-break-word"
         innerHTML={html() ?? ""}
       />
     </div>

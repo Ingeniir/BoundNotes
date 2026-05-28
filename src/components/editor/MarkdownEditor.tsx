@@ -18,6 +18,7 @@ export function MarkdownEditor() {
         extensions: [
           basicSetup,
           markdown(),
+          EditorView.lineWrapping,
           EditorView.theme({
             "&": { height: "100%", fontSize: "14px" },
             ".cm-scroller": { overflow: "auto", fontFamily: "'JetBrains Mono', monospace" },
@@ -25,6 +26,7 @@ export function MarkdownEditor() {
           }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
+              isLocalChange = true;
               const content = update.state.doc.toString();
               schedule({ content });
             }
@@ -35,10 +37,17 @@ export function MarkdownEditor() {
     });
   });
 
+  let isLocalChange = false;
+
   // Quand on change de note active, on recharge le contenu
   createEffect(() => {
     const note = activeNote();
     if (!view || !note) return;
+
+    if (isLocalChange) {
+      isLocalChange = false;
+      return;
+    }
 
     const currentContent = view.state.doc.toString();
     if (currentContent !== note.content) {
@@ -57,7 +66,7 @@ export function MarkdownEditor() {
   return (
     <div
       ref={container}
-      class="h-full w-full overflow-hidden"
+      class="absolute inset-0 overflow-hidden"
     />
   );
 }
