@@ -1,0 +1,41 @@
+.hljs {
+  background: transparent !important;
+}
+
+.hljs-string {
+  color: green !important;
+}
+
+.prose pre {
+  position: relative;
+  padding-top: 2.5rem !important; /* On fait de la place en haut pour le badge */
+}
+
+/* 2. On crée le badge générique en haut à droite */
+.prose pre::before {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #737373; /* Gris neutre */
+  background-color: #e5e5e5; /* Petit fond gris pour le badge */
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.25rem;
+  pointer-events: none;
+}
+
+/* 3. On détecte la classe du langage pour écrire le bon texte */
+.prose pre:has(code.language-python)::before { content: "Python"; }
+.prose pre:has(code.language-rust)::before { content: "Rust"; }
+.prose pre:has(code.language-javascript)::before { content: "JS"; }
+.prose pre:has(code.language-typescript)::before { content: "TS"; }
+.prose pre:has(code.language-html)::before { content: "HTML"; }
+.prose pre:has(code.language-css)::before { content: "CSS"; }
+.prose pre:has(code.language-sql)::before { content: "SQL"; }
+.prose pre:has(code.language-bash)::before { content: "Bash"; }
+.prose pre:has(code.language-json)::before { content: "JSON"; }
+
+/* Optionnel : Si aucun langage n'est détecté ou spécifié */
+.prose pre::before { content: "Code"; }

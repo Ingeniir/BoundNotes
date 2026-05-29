@@ -160,7 +160,7 @@ export const searchNotes = async (query: string) => {
   try {
     const results = await api.searchNotes(query);
 
-    if (searchId === currentSearchId) {
+    if (searchId !== currentSearchId) {
       return;
     }
 

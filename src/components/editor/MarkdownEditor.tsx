@@ -1,9 +1,54 @@
 import { onMount, onCleanup, createEffect } from "solid-js";
 import { activeNote } from "../../stores/notesStore";
 import { useAutoSave } from "../../hooks/useAutoSave";
-import { EditorView, basicSetup } from "codemirror";
+import { EditorView } from "codemirror";
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState } from "@codemirror/state";
+import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { languages } from "@codemirror/language-data"
+import { tags as t } from "@lezer/highlight";
+
+import {
+  lineNumbers,
+  highlightActiveLineGutter,
+  highlightSpecialChars,
+  drawSelection,
+  dropCursor,
+  rectangularSelection,
+  crosshairCursor,
+  highlightActiveLine,
+  keymap
+} from "@codemirror/view";
+import { history, historyKeymap, defaultKeymap } from "@codemirror/commands";
+import { bracketMatching, indentOnInput } from "@codemirror/language";
+import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
+import { autocompletion, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
+import { toggleCodeBlock, toggleHeading, toggleInlineMarkdown, toggleURL, toggleBulletAndCheckedList } from "@utils/keymapCodeMirror"
+
+const customHeadingStyle = HighlightStyle.define([
+  { tag: t.heading1, fontSize: "1.5em", fontWeight: "bold" },
+  { tag: t.heading2, fontSize: "1.3em", fontWeight: "bold" },
+  { tag: t.heading3, fontSize: "1.1em", fontWeight: "bold" },
+  { tag: t.heading4, fontSize: "1em", fontWeight: "bold" },
+  { tag: t.heading5, fontSize: "1em", fontWeight: "bold" },
+  { tag: t.heading6, fontSize: "1em", fontWeight: "bold", opacity: "0.7" },
+]);
+
+const customTextStyle = HighlightStyle.define([
+  { tag: t.emphasis, fontStyle: "italic" },
+  { tag: t.strong, fontWeight: "bold" },
+  { tag: t.strikethrough, textDecoration: "line-through" },
+  { tag: t.link, color: "#0366d6", textDecoration: "underline" },
+]);
+
+const customCodeStyle = HighlightStyle.define([
+  { tag: t.keyword, color: "#d73a49" },
+  { tag: t.string, color: "green" },
+  { tag: t.comment, color: "#6a737d", fontStyle: "italic" },
+  { tag: t.variableName, color: "black" },
+  { tag: t.function(t.variableName), color: "#6f42c1" },
+  { tag: t.number, color: "#005cc5" },
+]);
 
 export function MarkdownEditor() {
   let container!: HTMLDivElement;
@@ -11,18 +56,80 @@ export function MarkdownEditor() {
 
   const { schedule } = useAutoSave(() => activeNote()?.id);
 
+
+
   onMount(() => {
     view = new EditorView({
       state: EditorState.create({
         doc: activeNote()?.content ?? "",
         extensions: [
-          basicSetup,
-          markdown(),
+          lineNumbers(),
+          highlightActiveLineGutter(),
+          highlightSpecialChars(),
+          history(),
+          drawSelection(),
+          dropCursor(),
+          EditorState.allowMultipleSelections.of(true),
+          indentOnInput(),
+          syntaxHighlighting(customHeadingStyle), // Ton style de titres
+          bracketMatching(),
+          autocompletion(),
+          rectangularSelection(),
+          crosshairCursor(),
+          highlightActiveLine(),
+          highlightSelectionMatches(),
+          keymap.of([
+            { key: "Mod-b", run: toggleInlineMarkdown("**") },
+            { key: "Mod-i", run: toggleInlineMarkdown("*") },
+            { key: "Mod-1", run: toggleHeading(1) },
+            { key: "Mod-2", run: toggleHeading(2) },
+            { key: "Mod-3", run: toggleHeading(3) },
+            { key: "Mod-4", run: toggleHeading(4) },
+            { key: "Mod-Alt-g", run: toggleCodeBlock() },
+            { key: "Mod-e", run: toggleInlineMarkdown("`") },
+            { key: "Mod-m", run: toggleInlineMarkdown("$") },
+            { key: "Mod-Alt-m", run: toggleInlineMarkdown("$$", true) },
+            { key: "Mod-k", run: toggleURL() },
+            { key: "Mod-Shift-8", run: toggleBulletAndCheckedList("-") },
+            { key: "Mod-Shift-l", run: toggleBulletAndCheckedList("- [ ]") },
+            ...closeBracketsKeymap,
+            ...defaultKeymap,
+            ...historyKeymap,
+            ...searchKeymap,
+            ...completionKeymap,
+          ]),
+          markdown({ codeLanguages: languages }),
           EditorView.lineWrapping,
+          syntaxHighlighting(customHeadingStyle),
+          syntaxHighlighting(customTextStyle),
+          syntaxHighlighting(customCodeStyle),
           EditorView.theme({
             "&": { height: "100%", fontSize: "14px" },
             ".cm-scroller": { overflow: "auto", fontFamily: "'JetBrains Mono', monospace" },
-            ".cm-content": { padding: "16px" },
+            ".cm-activeLine": { backgroundColor: "rgba(100, 100, 100, 0.1)" },
+            ".cm-gutters": {
+              backgroundColor: "#f9f9f9",
+              borderRight: "1px solid #e0e0e0",
+              minWidth: "20px",
+              display: "flex",
+              justifyContent: "center",
+              fontSize: "16px"
+            },
+            ".cm-gutter": {
+              height: "100%",
+            },
+            ".cm-gutterElement": {
+              fontFamily: "'JetBrains Mono', monospace",
+              color: "#999",
+              padding: "0 8px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center"
+            },
+            ".cm-activeLineGutter": { backgroundColor: "#e0e0e0" },
+            ".cm-lineNumbers .cm-gutterElement": { fontFamily: "'JetBrains Mono', monospace", color: "#999" },
+            ".cm-lineNumbers": { border: "none" },
+
           }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
