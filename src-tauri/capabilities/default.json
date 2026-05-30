@@ -13,6 +13,11 @@
     "core:resources:default",
     "core:menu:default",
     "core:tray:default",
-    "core:webview:allow-internal-toggle-devtools"
+    "core:webview:allow-internal-toggle-devtools",
+    "core:window:allow-minimize",
+    "core:window:allow-maximize",
+    "core:window:allow-close",
+    "core:window:allow-is-maximized",
+    "core:window:allow-toggle-maximize"
   ]
 }
