@@ -2,7 +2,7 @@ import { Sidebar } from '@components/layout/Sidebar';
 import { NoteList } from '@components/layout/NoteList';
 import { MainPanel } from '@components/layout/MainPanel';
 import { TitleBar } from "@components/layout/TitleBar";
-import { error } from "@stores/notesStore";
+import { error, openNote } from "@stores/notesStore";
 import { tooltip, setShowShortcutsPanel, showShortcutsPanel } from "@stores/uiStore";
 import type { Component } from 'solid-js'
 import { onMount, Show } from 'solid-js';
@@ -10,10 +10,21 @@ import { loadAll } from './stores/notesStore';
 import { Presence, Motion } from 'solid-motionone';
 import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import { ShortcutsPanel } from '@components/modals/ShortcutsPanel';
+import { getLastNodeId } from '@lib/persistence';
 
 const App: Component = () => {
 
-  onMount(() => loadAll());
+  onMount(async () => {
+    await loadAll();
+
+    const lastId = await getLastNodeId();
+    if (lastId) {
+      await openNote(lastId).catch(() => {
+        persistLastNodeId(null);
+      });
+    }
+  });
+
   useKeyboardShortcuts();
 
   return (

@@ -7,8 +7,9 @@ use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder =
-        tauri::Builder::default().plugin(tauri_plugin_window_state::Builder::new().build());
+    let mut builder = tauri::Builder::default()
+        .plugin(tauri_plugin_store::Builder::new().build())
+        .plugin(tauri_plugin_window_state::Builder::new().build());
 
     // Enable the Tauri devtools plugin in development builds
     #[cfg(debug_assertions)]

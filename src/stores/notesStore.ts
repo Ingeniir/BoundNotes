@@ -1,7 +1,8 @@
 import { createSignal } from "solid-js";
 import { createStore, produce, reconcile } from "solid-js/store";
 import type { Note, NoteWithContent, Notebook, Tag } from "../types";
-import * as api from "../lib/tauri";
+import * as api from "@lib/tauri";
+import { persistLastNodeId } from "@lib/persistence";
 
 // ── État ───────────────────────────────────────────────
 const [notes, setNotes] = createStore<Note[]>([]);
@@ -60,6 +61,7 @@ export const openNote = async (id: string) => {
   try {
     const note = await api.getNote(id);
     setActiveNote(note);
+    await persistLastNodeId(id);
   } catch (err) {
     console.error("Erreur openNote :", err);
     setError("Impossible d'ouvrir la note.");
@@ -125,6 +127,7 @@ export const trashActiveNote = async (id: string) => {
       if (i !== -1) notes.splice(i, 1);
     }));
     setActiveNote(null);
+    await persistLastNodeId(null);
 
     setLengthNotes(c => c - 1);
   } catch (err) {
