@@ -56,8 +56,6 @@ export function MarkdownEditor() {
 
   const { schedule } = useAutoSave(() => activeNote()?.id);
 
-
-
   onMount(() => {
     view = new EditorView({
       state: EditorState.create({
@@ -145,6 +143,7 @@ export function MarkdownEditor() {
   });
 
   let isLocalChange = false;
+
 
   // Quand on change de note active, on recharge le contenu
   createEffect(() => {

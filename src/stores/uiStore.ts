@@ -9,6 +9,9 @@ export { showListNotes, setShowListNotes };
 // Thème
 const [theme, setTheme] = createSignal<"light" | "dark">("light");
 
+const [showShortcutsPanel, setShowShortcutsPanel] = createSignal(false);
+export { showShortcutsPanel, setShowShortcutsPanel };
+
 const [tooltip, setTooltip] = createSignal<string | null>(null);
 export { tooltip, setTooltip };
 

@@ -3,15 +3,18 @@ import { NoteList } from '@components/layout/NoteList';
 import { MainPanel } from '@components/layout/MainPanel';
 import { TitleBar } from "@components/layout/TitleBar";
 import { error } from "@stores/notesStore";
-import { tooltip } from "@stores/uiStore";
+import { tooltip, setShowShortcutsPanel, showShortcutsPanel } from "@stores/uiStore";
 import type { Component } from 'solid-js'
 import { onMount, Show } from 'solid-js';
 import { loadAll } from './stores/notesStore';
 import { Presence, Motion } from 'solid-motionone';
+import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
+import { ShortcutsPanel } from '@components/modals/ShortcutsPanel';
 
 const App: Component = () => {
 
   onMount(() => loadAll());
+  useKeyboardShortcuts();
 
   return (
     <div class="flex flex-col h-screen w-screen overflow-hidden bg-white text-gray-900 font-sans">
@@ -32,6 +35,7 @@ const App: Component = () => {
         <Sidebar />
         <NoteList />
         <MainPanel />
+        <ShortcutsPanel open={showShortcutsPanel()} onClose={() => setShowShortcutsPanel(false)} />
       </div>
     </div>
   )

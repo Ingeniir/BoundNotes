@@ -12,7 +12,7 @@ fn now_ms() -> i64 {
 pub fn get_notebooks(db: State<'_, Db>) -> AppResult<Vec<Notebook>> {
     let conn = db.0.lock().unwrap();
     let mut stmt = conn.prepare(
-        "SELECT id, name, icon, position, created_at, updated_at
+        "SELECT id, parent_id, name, icon, position, created_at, updated_at
          FROM notebooks ORDER BY position ASC, name ASC",
     )?;
 
@@ -20,11 +20,12 @@ pub fn get_notebooks(db: State<'_, Db>) -> AppResult<Vec<Notebook>> {
         .query_map([], |row| {
             Ok(Notebook {
                 id: row.get(0)?,
-                name: row.get(1)?,
-                icon: row.get(2)?,
-                position: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+                icon: row.get(3)?,
+                position: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -39,19 +40,27 @@ pub fn create_notebook(db: State<'_, Db>, payload: CreateNotebookPayload) -> App
     let now = now_ms();
 
     let position: i64 = conn.query_row(
-        "SELECT COALESCE(MAX(position), 0) + 1 FROM notebooks",
-        [],
+        "SELECT COALESCE(MAX(position), 0) + 1 FROM notebooks WHERE parent_id IS ?1",
+        rusqlite::params![payload.parent_id],
         |row| row.get(0),
     )?;
 
     conn.execute(
-        "INSERT INTO notebooks (id, name, icon, position, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?5)",
-        params![id, payload.name, payload.icon, position, now],
+        "INSERT INTO notebooks (id, parent_id, name, icon, position, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+        params![
+            id,
+            payload.parent_id,
+            payload.name,
+            payload.icon,
+            position,
+            now
+        ],
     )?;
 
     Ok(Notebook {
         id,
+        parent_id: payload.parent_id,
         name: payload.name,
         icon: payload.icon,
         position,
@@ -84,16 +93,17 @@ pub fn update_notebook(
     }
 
     conn.query_row(
-        "SELECT id, name, icon, position, created_at, updated_at FROM notebooks WHERE id = ?1",
+        "SELECT id, parent_id, name, icon, position, created_at, updated_at FROM notebooks WHERE id = ?1",
         params![id],
         |row| {
             Ok(Notebook {
                 id: row.get(0)?,
-                name: row.get(1)?,
-                icon: row.get(2)?,
-                position: row.get(3)?,
-                created_at: row.get(4)?,
-                updated_at: row.get(5)?,
+                parent_id: row.get(1)?,
+                name: row.get(2)?,
+                icon: row.get(3)?,
+                position: row.get(4)?,
+                created_at: row.get(5)?,
+                updated_at: row.get(6)?,
             })
         },
     )

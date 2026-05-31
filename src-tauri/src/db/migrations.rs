@@ -28,7 +28,10 @@ pub fn run(conn: &Connection) -> rusqlite::Result<()> {
     )?;
 
     // Liste des migrations dans l'ordre
-    let migrations: &[(i64, &str, &str)] = &[(1, "initial_schema", MIGRATION_001)];
+    let migrations: &[(i64, &str, &str)] = &[
+        (1, "initial_schema", MIGRATION_001),
+        (2, "notebooks_parent_id", MIGRATION_002),
+    ];
 
     for (version, description, sql) in migrations {
         if current_version < *version {
@@ -119,4 +122,9 @@ const MIGRATION_001: &str = "
     CREATE INDEX IF NOT EXISTS idx_notes_trashed     ON notes(is_trashed, trashed_at);
     CREATE INDEX IF NOT EXISTS idx_note_tags_note    ON note_tags(note_id);
     CREATE INDEX IF NOT EXISTS idx_note_tags_tag     ON note_tags(tag_id);
+";
+
+const MIGRATION_002: &str = "
+    ALTER TABLE notebooks ADD COLUMN parent_id TEXT REFERENCES notebooks(id) ON DELETE CASCADE;
+    CREATE INDEX IF NOT EXISTS idx_notebooks_parent_id ON notebooks(parent_id);
 ";

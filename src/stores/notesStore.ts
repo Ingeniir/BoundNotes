@@ -8,11 +8,12 @@ const [notes, setNotes] = createStore<Note[]>([]);
 const [notebooks, setNotebooks] = createStore<Notebook[]>([]);
 const [tags, setTags] = createStore<Tag[]>([]);
 const [activeNote, setActiveNote] = createSignal<NoteWithContent | null>(null);
-const [loading, setLoading] = createSignal(false);
+const [loading, setLoading] = createSignal<boolean>(false);
+const [lengthNotes, setLengthNotes] = createSignal<number>(0);
 
 const [error, setError] = createSignal<string | null>(null);
 
-export { notes, notebooks, tags, activeNote, loading, error };
+export { notes, notebooks, tags, activeNote, loading, lengthNotes, error };
 
 let currentSearchId = 0;
 
@@ -28,6 +29,8 @@ export const loadAll = async () => {
     setNotes(reconcile(n));
     setNotebooks(reconcile(nb));
     setTags(reconcile(t));
+
+    setLengthNotes(n.length);
   } catch (e) {
     console.error("Échec du chargement initial :", e);
     setError("Impossible de charger les données.");
@@ -42,6 +45,10 @@ export const loadNotes = async (notebook_id?: string, trashed = false) => {
   try {
     const n = await api.getNotes(notebook_id, trashed);
     setNotes(reconcile(n));
+
+    if (!notebook_id && !trashed) {
+      setLengthNotes(n.length);
+    }
   } catch (err) {
     console.error("Erreur loadNotes :", err);
     setError("Impossible de charger les notes.");
@@ -65,6 +72,8 @@ export const newNote = async (notebook_id?: string) => {
     const note = await api.createNote(notebook_id);
     setNotes(produce(notes => notes.unshift(note)));
     setActiveNote(note);
+
+    setLengthNotes(c => c + 1);
     return note;
   } catch (err) {
     console.error("Erreur newNote :", err);
@@ -116,6 +125,8 @@ export const trashActiveNote = async (id: string) => {
       if (i !== -1) notes.splice(i, 1);
     }));
     setActiveNote(null);
+
+    setLengthNotes(c => c - 1);
   } catch (err) {
     console.error("Erreur trashActiveNote:", err);
     setError("Impossible de mettre la note à la corbeille.");
@@ -126,6 +137,9 @@ export const restoreNote = async (id: string) => {
   setError(null);
   try {
     await api.restoreNote(id);
+
+    setLengthNotes(c => c + 1);
+
     await loadNotes(undefined, true);
   } catch (err) {
     console.error("Erreur restoreNote:", err);
@@ -176,10 +190,10 @@ export const cancelSearch: () => void = () => {
 }
 
 // ── Notebooks ──────────────────────────────────────────
-export const newNotebook = async (name: string) => {
+export const newNotebook = async (name: string, parent_id?: string) => {
   setError(null);
   try {
-    const nb = await api.createNotebook(name);
+    const nb = await api.createNotebook(name, undefined, parent_id);
     setNotebooks(produce(nbs => nbs.push(nb)));
     return nb;
   } catch (err) {
@@ -197,6 +211,9 @@ export const removeNotebook = async (id: string) => {
       const i = nbs.findIndex(nb => nb.id === id);
       if (i !== -1) nbs.splice(i, 1);
     }));
+
+    const n = await api.getNotes();
+    setLengthNotes(n.length);
   } catch (err) {
     console.error("Erreur removeNotebook:", err);
     setError("La suppression du carnet a échoué.");

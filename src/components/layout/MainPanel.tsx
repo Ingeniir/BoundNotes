@@ -5,6 +5,7 @@ import { MarkdownEditor } from "../editor/MarkdownEditor";
 import { MarkdownPreview } from "../editor/MarkdownPreview";
 import { useAutoSave } from "../../hooks/useAutoSave";
 import { ModeSelector } from "@components/ui/modeSelector";
+import { getRandomCitation } from "@lib/citation";
 import { Tag } from "lucide-solid";
 
 export function MainPanel() {
@@ -96,9 +97,8 @@ export function MainPanel() {
 
 function EmptyState() {
   return (
-    <div class="flex-1 flex flex-col items-center justify-center text-gray-400 gap-3">
-      <span class="text-4xl">📝</span>
-      <p class="text-sm">Sélectionne une note ou crée-en une nouvelle</p>
+    <div class="flex-1 flex flex-col items-center justify-center text-gray-500 gap-3">
+      <p class="text-lg font-roboto-slab border-t border-b border-gray-200 py-2 px-4">{getRandomCitation()}</p>
     </div>
   );
 }

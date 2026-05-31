@@ -19,11 +19,16 @@ export type NoteWithContent = Note & {
 
 export type Notebook = {
     id: string;
+    parent_id: string | null;
     name: string;
     icon: string | null;
     position: number;
     created_at: number;
     updated_at: number;
+}
+
+export type NotebookNode = Notebook & {
+    children: NotebookNode[];
 }
 
 export type Tag = {

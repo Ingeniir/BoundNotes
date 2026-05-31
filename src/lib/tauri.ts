@@ -18,17 +18,17 @@ export const updateNote = (
   payload: { title?: string; content?: string; is_pinned?: boolean }
 ) => invoke<NoteWithContent>("update_note", { id, payload });
 
-export const trashNote   = (id: string) => invoke("trash_note",   { id });
+export const trashNote = (id: string) => invoke("trash_note", { id });
 export const restoreNote = (id: string) => invoke("restore_note", { id });
-export const deleteNote  = (id: string) => invoke("delete_note",  { id });
+export const deleteNote = (id: string) => invoke("delete_note", { id });
 export const searchNotes = (query: string) => invoke<Note[]>("search_notes", { query });
 
 // ── Notebooks ──────────────────────────────────────────
 export const getNotebooks = () =>
   invoke<Notebook[]>("get_notebooks");
 
-export const createNotebook = (name: string, icon?: string) =>
-  invoke<Notebook>("create_notebook", { payload: { name, icon } });
+export const createNotebook = (name: string, icon?: string, parent_id?: string) =>
+  invoke<Notebook>("create_notebook", { payload: { name, icon, parent_id } });
 
 export const updateNotebook = (id: string, payload: { name?: string; icon?: string }) =>
   invoke<Notebook>("update_notebook", { id, payload });
