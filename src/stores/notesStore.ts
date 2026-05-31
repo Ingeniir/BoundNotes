@@ -3,18 +3,20 @@ import { createStore, produce, reconcile } from "solid-js/store";
 import type { Note, NoteWithContent, Notebook, Tag } from "../types";
 import * as api from "@lib/tauri";
 import { persistLastNodeId } from "@lib/persistence";
+import { setActiveSidebarId, setSidebarView } from "./uiStore";
 
 // ── État ───────────────────────────────────────────────
 const [notes, setNotes] = createStore<Note[]>([]);
 const [notebooks, setNotebooks] = createStore<Notebook[]>([]);
 const [tags, setTags] = createStore<Tag[]>([]);
 const [activeNote, setActiveNote] = createSignal<NoteWithContent | null>(null);
+const [activeTags, setActiveTags] = createSignal<Tag[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
 const [lengthNotes, setLengthNotes] = createSignal<number>(0);
 
 const [error, setError] = createSignal<string | null>(null);
 
-export { notes, notebooks, tags, activeNote, loading, lengthNotes, error };
+export { notes, notebooks, tags, activeNote, loading, lengthNotes, error, activeTags };
 
 let currentSearchId = 0;
 
@@ -41,10 +43,10 @@ export const loadAll = async () => {
 };
 
 // ── Notes ──────────────────────────────────────────────
-export const loadNotes = async (notebook_id?: string, trashed = false) => {
+export const loadNotes = async (notebook_id?: string, trashed = false, tag_id?: string) => {
   setError(null);
   try {
-    const n = await api.getNotes(notebook_id, trashed);
+    const n = await api.getNotes(notebook_id, trashed, tag_id);
     setNotes(reconcile(n));
 
     if (!notebook_id && !trashed) {
@@ -56,11 +58,23 @@ export const loadNotes = async (notebook_id?: string, trashed = false) => {
   }
 };
 
+export const loadNotesByTag = async (tag_id: string) => {
+  setError(null);
+  try {
+    const n = await api.getNotesByTag(tag_id);
+    setNotes(reconcile(n));
+  } catch (err) {
+    console.error("Erreur loadNotesByTag:", err);
+    setError("Impossible de charger les notes par tag.");
+  }
+};
+
 export const openNote = async (id: string) => {
   setError(null);
   try {
     const note = await api.getNote(id);
     setActiveNote(note);
+    setActiveTags(note.tags);
     await persistLastNodeId(id);
   } catch (err) {
     console.error("Erreur openNote :", err);
@@ -74,6 +88,7 @@ export const newNote = async (notebook_id?: string) => {
     const note = await api.createNote(notebook_id);
     setNotes(produce(notes => notes.unshift(note)));
     setActiveNote(note);
+    setActiveTags([]);
 
     setLengthNotes(c => c + 1);
     return note;
@@ -100,6 +115,7 @@ export const saveNote = async (
         word_count: updated.word_count,
         is_pinned: updated.is_pinned,
         updated_at: updated.updated_at,
+        tags: updated.tags,
       });
     }
 
@@ -222,3 +238,111 @@ export const removeNotebook = async (id: string) => {
     setError("La suppression du carnet a échoué.");
   }
 };
+
+// ── Gestion tags sur une note ──────────────────────────
+export const addTagToNote = async (noteId: string, tagName: string, color?: string) => {
+  setError(null);
+  try {
+    // Crée le tag s'il n'existe pas (idempotent)
+    const tag = await api.createTag(tagName, color);
+    await api.addTagToNote(noteId, tag.id);
+
+    // Met à jour activeTags
+    setActiveTags(prev => {
+      if (prev.find(t => t.id === tag.id)) return prev;
+      return [...prev, tag];
+    });
+
+    if (activeNote()?.id === noteId) {
+      setActiveNote(prev => prev ? { ...prev, tags: [...(prev.tags || []), tag] } : null);
+    }
+
+    // Met à jour la note dans la liste
+    const index = notes.findIndex(n => n.id === noteId);
+    if (index !== -1) {
+      const current = notes[index].tags ?? [];
+      if (!current.find(t => t.id === tag.id)) {
+        setNotes(index, "tags", [...current, tag]);
+      }
+    }
+
+    setTags(produce(tagsList => {
+      if (!tagsList.find(t => t.id === tag.id)) {
+        tagsList.push(tag);
+      }
+    }))
+
+    return tag;
+  } catch (err) {
+    console.error("Erreur addTagToNote:", err);
+    setError("Impossible d'ajouter le tag.");
+  }
+};
+
+export const removeTagFromNote = async (noteId: string, tagId: string) => {
+  setError(null);
+  try {
+    await api.removeTagFromNote(noteId, tagId);
+
+    // Met à jour activeTags
+    setActiveTags((prev) => prev.filter(t => t.id !== tagId));
+
+    if (activeNote()?.id === noteId) {
+      setActiveNote(prev => prev ? { ...prev, tags: prev.tags.filter(t => t.id !== tagId) } : null);
+    }
+
+    // Met à jour la note dans la liste
+    const index = notes.findIndex(n => n.id === noteId);
+    if (index !== -1) {
+      setNotes(index, "tags", notes[index].tags.filter(t => t.id !== tagId));
+    }
+  } catch (err) {
+    console.error("Erreur removeTagFromNote:", err);
+    setError("Impossible de retirer le tag.");
+  }
+};
+
+export const removeTag = async (tagId: string) => {
+  setError(null);
+  try {
+    await api.removeTag(tagId);
+
+    setTags(produce(tagsList => {
+      const i = tagsList.findIndex(t => t.id === tagId);
+      if (i !== -1) tagsList.splice(i, 1);
+    }));
+
+    setNotes(produce(notesList => {
+      for (const note of notesList) {
+        if (note.tags) {
+          const tagIndex = note.tags.findIndex(t => t.id === tagId);
+          if (tagIndex !== -1) {
+            note.tags.splice(tagIndex, 1);
+          }
+        }
+      }
+    }));
+
+    const currentActive = activeNote();
+    if (currentActive && currentActive.tags) {
+      setActiveNote({
+        ...currentActive,
+        tags: currentActive.tags.filter(t => t.id !== tagId)
+      });
+    }
+
+    setActiveTags(prev => prev.filter(t => t.id !== tagId));
+
+    if (tags.length <= 0) {
+      setSidebarView("all");
+      setActiveSidebarId(null);
+      await loadNotes();
+    }
+
+
+    setActiveTags(prev => prev.filter(t => t.id !== tagId));
+  } catch (err) {
+    console.error("Erreur removeTag:", err);
+    setError("Impossible de supprimer le tag.");
+  }
+}

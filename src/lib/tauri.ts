@@ -4,8 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 import type { Note, NoteWithContent, Notebook, Tag } from "../types";
 
 // ── Notes ──────────────────────────────────────────────
-export const getNotes = (notebook_id?: string, trashed = false) =>
-  invoke<Note[]>("get_notes", { notebookId: notebook_id, trashed });
+export const getNotes = (notebook_id?: string, trashed = false, tag_id?: string) =>
+  invoke<Note[]>("get_notes", { notebookId: notebook_id, trashed, tagId: tag_id });
 
 export const getNote = (id: string) =>
   invoke<NoteWithContent>("get_note", { id });
@@ -17,6 +17,9 @@ export const updateNote = (
   id: string,
   payload: { title?: string; content?: string; is_pinned?: boolean }
 ) => invoke<NoteWithContent>("update_note", { id, payload });
+
+export const getNotesByTag = (tag_id: string) =>
+  invoke<Note[]>("get_notes_by_tag", { tagId: tag_id });
 
 export const trashNote = (id: string) => invoke("trash_note", { id });
 export const restoreNote = (id: string) => invoke("restore_note", { id });
@@ -51,3 +54,6 @@ export const removeTagFromNote = (note_id: string, tag_id: string) =>
 
 export const getTagsForNote = (note_id: string) =>
   invoke<Tag[]>("get_tags_for_note", { noteId: note_id });
+
+export const removeTag = (tag_id: string) =>
+  invoke("remove_tag", { tagId: tag_id });

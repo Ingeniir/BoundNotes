@@ -1,9 +1,10 @@
 import { For, Show, createSignal, createMemo, type JSX } from "solid-js";
-import { notebooks, newNotebook, removeNotebook, loadNotes, lengthNotes } from "@stores/notesStore";
+import { notebooks, newNotebook, removeNotebook, loadNotes, lengthNotes, tags, activeTags, loadNotesByTag, removeTag } from "@stores/notesStore";
 import {
   sidebarView, setSidebarView,
   activeSidebarId, setActiveSidebarId,
-  theme, toggleTheme
+  theme, toggleTheme,
+  setActiveTagId
 } from "@stores/uiStore";
 import { buildNotebookTree } from "@lib/notebookTree";
 import type { NotebookNode } from "../../types";
@@ -13,9 +14,11 @@ import {
   FileText, Trash2, Trash, Moon, Sun, Plus,
   ChevronRight, Check, X,
   Folder,
-  FolderOpen
+  FolderOpen,
+  Tag
 } from "lucide-solid";
 import Notebook from "lucide-solid/icons/notebook";
+import { tagColor } from "@utils/colorTag";
 
 export function Sidebar() {
   const tree = createMemo(() => buildNotebookTree(notebooks));
@@ -41,6 +44,53 @@ export function Sidebar() {
         {/* Section Carnets */}
         <NotebooksSection tree={tree()} />
 
+        {/* Tags */}
+        <div class="pt-3 pb-1 px-2">
+          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Tags
+          </span>
+        </div>
+        <Show when={tags.length > 0}>
+          <For each={tags}>
+            {(tag) => (
+              <button
+                onClick={() => {
+                  setSidebarView("tag");
+                  setActiveSidebarId(tag.id);
+                  setActiveTagId(tag.id);
+                  loadNotesByTag(tag.id);
+                }}
+                class={clsx(
+                  "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left",
+                  sidebarView() === "tag" && activeSidebarId() === tag.id
+                    ? "bg-gray-200 text-black font-medium"
+                    : "text-gray-700 hover:bg-gray-100"
+                )}
+              >
+                <div class="flex items-center gap-2">
+                  <span
+                    class="flex items-center w-2.5 h-2.5 rounded-full shrink-0"
+                    style={{ "background-color": tag.color ?? "#e5e7eb" }}
+                  />
+                  <span class="truncate">{tag.name}</span>
+                </div>
+                <span>
+                  <Trash
+                    size={12}
+                    class="text-gray-400 hover:text-red-500 transition-colors" onClick={(e) => {
+                      e.stopPropagation();
+                      if (tag.id) {
+                        setActiveTagId(tag.id);
+                        removeTag(tag.id);
+                      }
+                    }}
+                  />
+                </span>
+              </button>
+            )}
+          </For>
+        </Show>
+
         {/* Corbeille */}
         <div class="pt-2">
           <SidebarItem
@@ -54,6 +104,7 @@ export function Sidebar() {
             }}
           />
         </div>
+
       </nav>
 
       {/* Thème */}
@@ -62,7 +113,7 @@ export function Sidebar() {
           {theme() === "light" ? <Moon size={16} /> : <Sun size={16} />}
         </button>
       </div>
-    </aside>
+    </aside >
   );
 }
 

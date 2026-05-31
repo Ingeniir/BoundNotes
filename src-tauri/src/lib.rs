@@ -40,6 +40,7 @@ pub fn run() {
             commands::notes::restore_note,
             commands::notes::delete_note,
             commands::notes::search_notes,
+            commands::notes::get_notes_by_tag,
             // Notebooks
             commands::notebooks::get_notebooks,
             commands::notebooks::create_notebook,
@@ -51,6 +52,7 @@ pub fn run() {
             commands::tags::add_tag_to_note,
             commands::tags::remove_tag_from_note,
             commands::tags::get_tags_for_note,
+            commands::tags::remove_tag,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

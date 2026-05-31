@@ -1,4 +1,8 @@
-use crate::{db::Db, error::AppError, error::AppResult, models::note::*};
+use crate::{
+    db::Db,
+    error::{AppError, AppResult},
+    models::{note::*, tag::Tag},
+};
 use chrono::Utc;
 use rusqlite::params;
 use tauri::State;
@@ -16,6 +20,10 @@ fn count_words(content: &str) -> i64 {
     content.split_whitespace().count() as i64
 }
 
+fn parse_tags(tags_json: &str) -> Vec<Tag> {
+    serde_json::from_str(tags_json).unwrap_or_default()
+}
+
 #[tauri::command]
 pub fn get_notes(
     db: State<'_, Db>,
@@ -25,17 +33,30 @@ pub fn get_notes(
     let conn = db.0.lock().unwrap();
     let is_trashed = trashed.unwrap_or(false) as i64;
 
-    let mut stmt = conn.prepare(
-        "SELECT id, notebook_id, title, excerpt, word_count,
-                is_pinned, is_trashed, trashed_at, created_at, updated_at
-         FROM notes
-         WHERE (notebook_id = ?1 OR ?1 IS NULL)
-           AND is_trashed = ?2
-         ORDER BY is_pinned DESC, updated_at DESC",
-    )?;
+    let sql = "
+        SELECT
+            n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
+            n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at,
+            COALESCE(
+                json_group_array(
+                    json_object('id', t.id, 'name', t.name, 'color', t.color, 'position', t.position)
+                ) FILTER (WHERE t.id IS NOT NULL),
+                '[]'
+            ) as tags
+        FROM notes n
+        LEFT JOIN note_tags nt ON nt.note_id = n.id
+        LEFT JOIN tags t ON t.id = nt.tag_id
+        WHERE (n.notebook_id = ?1 OR ?1 IS NULL)
+          AND n.is_trashed = ?2
+        GROUP BY n.id
+        ORDER BY n.is_pinned DESC, n.updated_at DESC
+    ";
+
+    let mut stmt = conn.prepare(sql)?;
 
     let notes = stmt
         .query_map(params![notebook_id, is_trashed], |row| {
+            let tags_json: String = row.get(10)?;
             Ok(Note {
                 id: row.get(0)?,
                 notebook_id: row.get(1)?,
@@ -47,6 +68,7 @@ pub fn get_notes(
                 trashed_at: row.get(7)?,
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
+                tags: parse_tags(&tags_json),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;
@@ -58,36 +80,47 @@ pub fn get_notes(
 pub fn get_note(db: State<'_, Db>, id: String) -> AppResult<NoteWithContent> {
     let conn = db.0.lock().unwrap();
 
+    let sql = "
+        SELECT
+            n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
+            n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at,
+            COALESCE(nc.content, ''),
+            COALESCE(
+                json_group_array(
+                    json_object('id', t.id, 'name', t.name, 'color', t.color, 'position', t.position)
+                ) FILTER (WHERE t.id IS NOT NULL),
+                '[]'
+            ) as tags
+        FROM notes n
+        LEFT JOIN note_contents nc ON nc.note_id = n.id
+        LEFT JOIN note_tags nt ON nt.note_id = n.id
+        LEFT JOIN tags t ON t.id = nt.tag_id
+        WHERE n.id = ?1
+        GROUP BY n.id
+    ";
+
     let note = conn
-        .query_row(
-            "SELECT n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
-                n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at,
-                COALESCE(nc.content, '')
-         FROM notes n
-         LEFT JOIN note_contents nc ON nc.note_id = n.id
-         WHERE n.id = ?1",
-            params![id],
-            |row| {
-                Ok(NoteWithContent {
-                    id: row.get(0)?,
-                    notebook_id: row.get(1)?,
-                    title: row.get(2)?,
-                    excerpt: row.get(3)?,
-                    word_count: row.get(4)?,
-                    is_pinned: row.get::<_, i64>(5)? != 0,
-                    is_trashed: row.get::<_, i64>(6)? != 0,
-                    trashed_at: row.get(7)?,
-                    created_at: row.get(8)?,
-                    updated_at: row.get(9)?,
-                    content: row.get(10)?,
-                })
-            },
-        )
+        .query_row(sql, params![id], |row| {
+            let tags_json: String = row.get(11)?;
+            Ok(NoteWithContent {
+                id: row.get(0)?,
+                notebook_id: row.get(1)?,
+                title: row.get(2)?,
+                excerpt: row.get(3)?,
+                word_count: row.get(4)?,
+                is_pinned: row.get::<_, i64>(5)? != 0,
+                is_trashed: row.get::<_, i64>(6)? != 0,
+                trashed_at: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+                content: row.get(10)?,
+                tags: parse_tags(&tags_json),
+            })
+        })
         .map_err(|_| AppError::NotFound(format!("Note {} introuvable", id)))?;
 
     Ok(note)
 }
-
 #[tauri::command]
 pub fn create_note(db: State<'_, Db>, payload: CreateNotePayload) -> AppResult<NoteWithContent> {
     let conn = db.0.lock().unwrap();
@@ -188,18 +221,31 @@ pub fn search_notes(db: State<'_, Db>, query: String) -> AppResult<Vec<Note>> {
     let conn = db.0.lock().unwrap();
     let fts_query = format!("{}*", query);
 
-    let mut stmt = conn.prepare(
-        "SELECT n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
-                n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at
-         FROM notes n
-         JOIN note_contents nc ON nc.note_id = n.id
-         JOIN notes_fts fts ON fts.rowid = nc.rowid
-         WHERE notes_fts MATCH ?1 AND n.is_trashed = 0
-         ORDER BY rank",
-    )?;
+    let sql = "
+        SELECT
+            n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
+            n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at,
+            COALESCE(
+                json_group_array(
+                    json_object('id', t.id, 'name', t.name, 'color', t.color, 'position', t.position)
+                ) FILTER (WHERE t.id IS NOT NULL),
+                '[]'
+            ) as tags
+        FROM notes n
+        LEFT JOIN note_contents nc ON nc.note_id = n.id
+        LEFT JOIN note_tags nt ON nt.note_id = n.id
+        LEFT JOIN tags t ON t.id = nt.tag_id
+        JOIN notes_fts fts ON fts.rowid = nc.rowid
+        WHERE notes_fts MATCH ?1 AND n.is_trashed = 0
+        GROUP BY n.id
+        ORDER BY rank
+    ";
+
+    let mut stmt = conn.prepare(sql)?;
 
     let notes = stmt
         .query_map(params![fts_query], |row| {
+            let tags_json: String = row.get(10)?;
             Ok(Note {
                 id: row.get(0)?,
                 notebook_id: row.get(1)?,
@@ -211,6 +257,54 @@ pub fn search_notes(db: State<'_, Db>, query: String) -> AppResult<Vec<Note>> {
                 trashed_at: row.get(7)?,
                 created_at: row.get(8)?,
                 updated_at: row.get(9)?,
+                tags: parse_tags(&tags_json),
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(notes)
+}
+
+#[tauri::command]
+pub fn get_notes_by_tag(db: State<'_, Db>, tag_id: String) -> AppResult<Vec<Note>> {
+    let conn = db.0.lock().unwrap();
+
+    let sql = "
+        SELECT
+            n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
+            n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at,
+            COALESCE(
+                json_group_array(
+                    json_object('id', t.id, 'name', t.name, 'color', t.color, 'position', t.position)
+                ) FILTER (WHERE t.id IS NOT NULL),
+                '[]'
+            ) as tags
+        FROM notes n
+        INNER JOIN note_tags nt ON nt.note_id = n.id
+        LEFT JOIN note_tags nt2 ON nt2.note_id = n.id
+        LEFT JOIN tags t ON t.id = nt2.tag_id
+        WHERE nt.tag_id = ?1 AND n.is_trashed = 0
+        GROUP BY n.id
+        ORDER BY n.is_pinned DESC, n.updated_at DESC
+    ";
+
+    let mut stmt = conn.prepare(sql)?;
+
+    let notes = stmt
+        .query_map(params![tag_id], |row| {
+            let tags_json: String = row.get(10)?;
+            Ok(Note {
+                id: row.get(0)?,
+                notebook_id: row.get(1)?,
+                title: row.get(2)?,
+                excerpt: row.get(3)?,
+                word_count: row.get(4)?,
+                is_pinned: row.get::<_, i64>(5)? != 0,
+                is_trashed: row.get::<_, i64>(6)? != 0,
+                trashed_at: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+                tags: parse_tags(&tags_json),
             })
         })?
         .collect::<Result<Vec<_>, _>>()?;

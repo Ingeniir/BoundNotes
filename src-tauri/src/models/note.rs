@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::models::tag::Tag;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Note {
     pub id: String,
@@ -12,6 +14,7 @@ pub struct Note {
     pub trashed_at: Option<i64>,
     pub created_at: i64,
     pub updated_at: i64,
+    pub tags: Vec<Tag>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -27,6 +30,7 @@ pub struct NoteWithContent {
     pub created_at: i64,
     pub updated_at: i64,
     pub content: String,
+    pub tags: Vec<Tag>,
 }
 
 #[derive(Debug, Deserialize)]

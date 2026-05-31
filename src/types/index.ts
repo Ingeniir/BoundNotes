@@ -11,6 +11,7 @@ export type Note = {
     trashed_at: number | null;
     created_at: number;
     updated_at: number;
+    tags: Tag[];
 }
 
 export type NoteWithContent = Note & {

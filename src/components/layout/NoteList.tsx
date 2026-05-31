@@ -1,9 +1,9 @@
 import { For, Show, createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import { notes, activeNote, openNote, newNote, loading, restoreNote, deleteNote, searchNotes, cancelSearch, trashActiveNote, notebooks } from "@stores/notesStore";
+import { notes, activeNote, openNote, newNote, loading, restoreNote, deleteNote, searchNotes, cancelSearch, trashActiveNote, notebooks, activeTags } from "@stores/notesStore";
 import { activeSidebarId, sidebarView, setSearchQuery, showListNotes, setShowListNotes } from "@stores/uiStore";
 import { clsx } from "clsx";
 import { Motion, Presence } from "solid-motionone";
-import { SquarePen, Search, Pin, ArrowDownZA, RotateCcw, Trash } from "lucide-solid";
+import { SquarePen, Search, Pin, ArrowDownZA, RotateCcw, Trash, Tag } from "lucide-solid";
 
 export function NoteList() {
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -164,6 +164,25 @@ export function NoteList() {
                             {note.excerpt}
                           </p>
                         </Show>
+
+                        <Show when={note.tags && note.tags.length > 0}>
+                          <div class="flex flex-wrap gap-1 mt-1.5">
+                            <For each={note.tags}>
+                              {(tag) => (
+                                <span
+                                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium opacity-90"
+                                  style={{
+                                    "color": tag.color ?? "#e5e7eb",
+                                  }}
+                                >
+                                  <Tag size={12} class="mr-0.5" />
+                                  {tag.name}
+                                </span>
+                              )}
+                            </For>
+                          </div>
+                        </Show>
+
                         <div class="text-xs text-gray-400 mt-1">
                           {note.word_count} word{note.word_count !== 0 ? "s" : ""}
                         </div>
@@ -182,7 +201,6 @@ export function NoteList() {
                               }} class="text-neutral-300 hover:text-red-500 p-0.5 rounded-md font-medium transition-colors duration-200 cursor-pointer">
                                 <Trash size={16} />
                               </button>
-
                             </div>
                           </Motion.div>
                         </Show>
@@ -254,8 +272,8 @@ export function NoteList() {
               )}
             </Show>
           </div>
-        </Motion.div>
-      </Show>
+        </Motion.div >
+      </Show >
     </Presence >
   )
 }

@@ -15,6 +15,9 @@ export { showShortcutsPanel, setShowShortcutsPanel };
 const [tooltip, setTooltip] = createSignal<string | null>(null);
 export { tooltip, setTooltip };
 
+const [activeTagId, setActiveTagId] = createSignal<string | null>(null);
+export { activeTagId, setActiveTagId };
+
 export const toggleTheme = () => {
   const next = theme() === "light" ? "dark" : "light";
   setTheme(next);
