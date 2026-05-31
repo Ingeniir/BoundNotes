@@ -39,3 +39,27 @@
 
 /* Optionnel : Si aucun langage n'est détecté ou spécifié */
 .prose pre::before { content: "Code"; }
+
+/* Checkboxes dans le preview */
+.prose input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #374151;
+  margin-right: 4px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.prose ul:has(input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* Texte barré quand coché */
+.prose li:has(input[type="checkbox"]:checked) {
+  
+  text-decoration: line-through;
+  color: #9ca3af;
+}
