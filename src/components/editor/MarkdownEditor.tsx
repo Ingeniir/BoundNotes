@@ -25,6 +25,9 @@ import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { autocompletion, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { toggleCodeBlock, toggleHeading, toggleInlineMarkdown, toggleURL, toggleBulletAndCheckedList } from "@utils/keymapCodeMirror"
+import { checkboxColorPlugin, checkboxPointerPlugin, rustFunctionPlugin, pointerDecoration } from "@utils/codemirrorPlugins"
+
+import "@styles/editor.css"
 
 const customHeadingStyle = HighlightStyle.define([
   { tag: t.heading1, fontSize: "1.5em", fontWeight: "bold" },
@@ -51,113 +54,6 @@ const customCodeStyle = HighlightStyle.define([
   { tag: t.number, color: "#005cc5" },
 ]);
 
-// Définitino des décorations
-const pointerDecoration = Decoration.mark({
-  class: "cm-checkbox-hover"
-});
-const checkboxUncheckedMark = Decoration.mark({
-  class: "cm-checkbox-unchecked"
-});
-const checkboxCheckedMark = Decoration.mark({
-  class: "cm-checkbox-checked"
-});
-
-// Plugin qui analyse le texte et applique les couleurs
-const checkboxColorPlugin = ViewPlugin.fromClass(class {
-  decorations: DecorationSet;
-
-  constructor(view: EditorView) {
-    this.decorations = this.buildDecorations(view);
-  }
-
-  update(update: ViewUpdate) {
-    if (update.docChanged || update.viewportChanged) {
-      this.decorations = this.buildDecorations(update.view);
-    }
-  }
-
-  buildDecorations(view: EditorView) {
-    const builder = new RangeSetBuilder<Decoration>();
-
-    // On ne parcourt QUE les parties du document visibles à l'écran (très performant)
-    for (let { from, to } of view.visibleRanges) {
-      const startLine = view.state.doc.lineAt(from);
-      const endLine = view.state.doc.lineAt(to);
-
-      // On boucle ligne par ligne
-      for (let i = startLine.number; i <= endLine.number; i++) {
-        const line = view.state.doc.line(i);
-        const match = line.text.match(/^(\s*[-*+]\s*)(\[\s?x?\s?\])/i);
-
-        if (match) {
-          const prefixLength = match[1].length;
-          const boxLength = match[2].length;
-          const boxStart = line.from + prefixLength;
-          const boxEnd = boxStart + boxLength;
-
-          const isChecked = match[2].toLowerCase().includes("x");
-
-          // On ajoute la décoration spécifiquement sur la position des crochets
-          builder.add(boxStart, boxEnd, isChecked ? checkboxCheckedMark : checkboxUncheckedMark);
-        }
-      }
-    }
-
-    return builder.finish();
-  }
-}, {
-  // On indique à CodeMirror que ce plugin fournit des décorations
-  decorations: v => v.decorations
-})
-
-const toggleMode = () => {
-  setEditorMode(prev => prev === "editor" ? "preview" : "editor");
-}
-
-// Plugin qui ajoute la classe Pointer au survol des checkboxes
-const checkboxPointerPlugin = ViewPlugin.fromClass(class {
-  decorations: DecorationSet;
-
-  constructor(view: EditorView) {
-    this.decorations = Decoration.none;
-  }
-}, {
-  eventHandlers: {
-    mousemove(e, view) {
-      const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
-      if (pos === null) {
-        if (view.contentDOM.style.cursor === "pointer") view.contentDOM.style.cursor = "";
-      };
-
-      const line = view.state.doc.lineAt(pos);
-      const relativePos = pos - line.from;
-
-      // Cherche la checbox sur la ligne survolée
-      const match = line.text.match(/^(\s*[-*+]\s*)(\[\s?x?\s?\])/i);
-
-      if (match) {
-        const prefixLength = match[1].length;
-        const boxLength = match[2].length;
-
-        if (relativePos >= prefixLength && relativePos <= prefixLength + boxLength) {
-          if (view.contentDOM.style.cursor !== "pointer") {
-            view.contentDOM.style.cursor = "pointer";
-          }
-          return;
-        }
-      }
-
-      if (view.contentDOM.style.cursor === "pointer") view.contentDOM.style.cursor = "";
-    },
-    mouseleave(_e, view) {
-      if (this.decorations.size > 0) {
-        this.decorations = Decoration.none;
-        view.requestMeasure();
-      }
-    }
-  },
-  decorations: v => v.decorations
-});
 
 export function MarkdownEditor() {
   let container!: HTMLDivElement;
@@ -249,6 +145,7 @@ export function MarkdownEditor() {
           }),
           checkboxPointerPlugin,
           checkboxColorPlugin,
+          rustFunctionPlugin,
           markdown({ codeLanguages: languages }),
           EditorView.lineWrapping,
           syntaxHighlighting(customHeadingStyle),
@@ -290,6 +187,10 @@ export function MarkdownEditor() {
               color: "#16a34a", // vert 
               fontWeight: "bold",
               opacity: "0.8"
+            },
+
+            ".cm-rust-function, .cm-rust-function *": {
+              color: "#6f42c1", // violet
             },
           }),
           EditorView.updateListener.of((update) => {
