@@ -27,7 +27,7 @@ const toggleInlineMarkdown = (syntax: string, double?: boolean) => (view: Editor
 
                 // Aucunne selection
                 return {
-                    changes: { from: range.from, insert: double ? syntax + "  " + syntax : syntax + syntax },
+                    changes: { from: range.from, insert: double ? syntax + "\n\n" + syntax : syntax + syntax },
                     range: EditorSelection.cursor(double ? range.from + syntax.length + 1 : range.from + syntax.length),
                 };
             }

@@ -12,24 +12,19 @@ import remarkMath from "remark-math";
 import remarkHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
+import remarkDirective from "remark-directive";
+import remarkImages from "remark-images";
+import remarkEmbedImages from "remark-embed-images";
 
 import { visit } from "unist-util-visit";
 
 import "highlight.js/styles/github.css";
-import "../../styles/editor.css";
+import "@styles/preview.css";
 import "katex/dist/katex.css";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
-function CheckboxElement(props: any) {
-  return (
-    <input
-      type="checkbox"
-      disabled
-      style="cursor: default;"
-      checked={props.checked}
-    />
-  )
-}
 
+// Plugins 
 function rehypeEnableCheckboxes() {
   return (tree: any) => {
     visit(tree, "element", (node: any) => {
@@ -41,6 +36,49 @@ function rehypeEnableCheckboxes() {
         delete node.properties.disabled;
         // Ajoute un style cursor pointer
         node.properties.style = "cursor: pointer;";
+      }
+    });
+  };
+}
+
+function rehypeLocalImages() {
+  return (tree: any) => {
+    visit(tree, "element", (node: any) => {
+      if (node.tagName !== "img") return;
+
+      const src = node.properties?.src as string;
+      if (!src) return;
+
+      if (
+        src.startsWith("http://") ||
+        src.startsWith("https://") ||
+        src.startsWith("data:") ||
+        src.startsWith("blob:") ||
+        src.startsWith("asset:")
+      ) return;
+
+      // Décode toutes les couches d'encodage
+      let decoded = src;
+      try {
+        let prev = "";
+        while (prev !== decoded) {
+          prev = decoded;
+          decoded = decodeURIComponent(decoded);
+        }
+      } catch {
+        decoded = src;
+      }
+
+      // ← Supprime les guillemets parasites
+      decoded = decoded.replace(/^["']|["']$/g, "").trim();
+
+      // Normalise les slashes Windows
+      const normalized = decoded.replace(/\\/g, "/");
+
+      try {
+        node.properties.src = convertFileSrc(normalized);
+      } catch (e) {
+        console.error("convertFileSrc error:", e);
       }
     });
   };
@@ -58,7 +96,9 @@ const processor = unified()
   })
   .use(rehypeRaw)
   .use(rehypeEnableCheckboxes)
+  .use(rehypeLocalImages)
   .use(rehypeKatex)
+  .use(remarkDirective)
   .use(remarkHighlight, { detect: true })
   .use(rehypeStringify);
 

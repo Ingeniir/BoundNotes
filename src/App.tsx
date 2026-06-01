@@ -11,6 +11,7 @@ import { Presence, Motion } from 'solid-motionone';
 import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import { ShortcutsPanel } from '@components/modals/ShortcutsPanel';
 import { getLastNodeId } from '@lib/persistence';
+import { convertFileSrc } from '@tauri-apps/api/core';
 
 const App: Component = () => {
 
@@ -23,6 +24,9 @@ const App: Component = () => {
         persistLastNodeId(null);
       });
     }
+
+    const data = convertFileSrc("C:\\Users\\hoare\\Downloads\\5015e4f57fb79cc45406d6163beb9abd.jpg");
+    console.log("Data URI:", data);
   });
 
   useKeyboardShortcuts();

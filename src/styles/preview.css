@@ -1,0 +1,128 @@
+
+/* Heading */
+
+h1 {
+    font-size: 2.25rem;
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: 1.875rem;
+    font-weight: 600;
+    margin-top: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+h3 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+h4 {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-top: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+h5 {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+h6 {
+    font-size: 0.875rem;
+    font-weight: 500;
+    margin-top: 0.25rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Heading */
+
+/* Code */
+
+code {
+    font-family: 'JetBrains Mono', monospace !important;
+    background-color: #f3f4f6; 
+    padding: 0.1rem 0.25rem;
+    border-radius: 0.25rem;
+}
+
+.prose pre {
+  position: relative;
+  padding-top: 1.5rem !important;
+}
+
+/* Badge */
+.prose pre::before {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #737373; /* Gris neutre */
+  background-color: #e5e5e5; /* Petit fond gris pour le badge */
+  padding: 0.1rem 0.5rem;
+  border-radius: 0.25rem;
+  pointer-events: none;
+}
+
+/* On détecte la classe du langage */
+.prose pre:has(code.language-python)::before { content: "Python"; }
+.prose pre:has(code.language-rust)::before { content: "Rust"; }
+.prose pre:has(code.language-javascript)::before { content: "JavaScript"; }
+.prose pre:has(code.language-typescript)::before { content: "TypeScript"; }
+.prose pre:has(code.language-html)::before { content: "HTML"; }
+.prose pre:has(code.language-css)::before { content: "CSS"; }
+.prose pre:has(code.language-sql)::before { content: "SQL"; }
+.prose pre:has(code.language-bash)::before { content: "Bash"; }
+.prose pre:has(code.language-json)::before { content: "JSON"; }
+
+/* Aucun langage spécifié */
+.prose pre::before { content: "Code"; }
+
+/* Fond de l'editeur de code */
+.hljs {
+  background: transparent !important;
+}
+
+.hljs-string {
+  color: green !important;
+}
+
+.hljs-tag > .hljs-name {
+    color: #207a72 !important;
+}
+
+/* Code Block */
+
+/* Checkbox */
+.prose input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  accent-color: #374151;
+  margin-right: 4px;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.prose ul:has(input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 0;
+}
+
+/* Texte barré quand coché */
+.prose li:has(input[type="checkbox"]:checked) {
+  color: #9ca3af;
+}
+
+/* Checkbox */
