@@ -1,5 +1,5 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount, type JSX } from "solid-js";
-import { notes, activeNote, openNote, newNote, loading, restoreNote, deleteNote, searchNotes, cancelSearch, trashActiveNote, notebooks } from "@stores/notesStore";
+import { notes, activeNote, openNote, newNote, loading, restoreNote, deleteNote, searchNotes, cancelSearch, trashActiveNote, notebooks, togglePin } from "@stores/notesStore";
 import { activeSidebarId, sidebarView, setSearchQuery, showListNotes } from "@stores/uiStore";
 import { clsx } from "clsx";
 import { Motion, Presence } from "solid-motionone";
@@ -186,7 +186,7 @@ export function NoteList() {
                       >
                         <div class="flex items-start justify-between gap-2">
                           <span class="flex items-center text-sm font-medium text-gray-900 leading-snug mb-3">
-                            {note.is_pinned && <Pin size={14} class="text-red-500 mr-1" />}
+                            {note.is_pinned && <Pin size={14} class="text-blue-500 mr-1" />}
                             <div class={clsx(sidebarView() === "trash" && "line-through", "flex items-center gap-2")}>
                               {/* O(1) Access via Map */}
                               <Show when={note.notebook_id && (sidebarView() === "all" || sidebarView() === "trash")}>
@@ -286,6 +286,19 @@ export function NoteList() {
                     }}
                   >
                     Corbeille
+                  </button>
+                  <div class="border-t border-gray-200 my-1" />
+                  <button
+                    class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors"
+                    onClick={() => {
+                      const targetNote = notes.find(n => n.id === menu().noteId);
+                      if (targetNote) {
+                        togglePin(targetNote.id, targetNote.is_pinned);
+                      }
+                      closeContextMenu();
+                    }}
+                  >
+                    {notes.find(n => n.id === menu().noteId)?.is_pinned ? "Unpin" : "Pin"}
                   </button>
                 </Show>
               </div>

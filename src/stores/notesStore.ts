@@ -13,10 +13,11 @@ const [activeNote, setActiveNote] = createSignal<NoteWithContent | null>(null);
 const [activeTags, setActiveTags] = createSignal<Tag[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
 const [lengthNotes, setLengthNotes] = createSignal<number>(0);
+const [lengthNotesPinned, setLengthNotesPinned] = createSignal<number>(0);
 
 const [error, setError] = createSignal<string | null>(null);
 
-export { notes, notebooks, tags, activeNote, loading, lengthNotes, error, activeTags };
+export { notes, notebooks, tags, activeNote, loading, lengthNotes, error, activeTags, lengthNotesPinned };
 
 let currentSearchId = 0;
 
@@ -34,6 +35,7 @@ export const loadAll = async () => {
     setTags(reconcile(t));
 
     setLengthNotes(n.length);
+    setLengthNotesPinned(n.filter(note => note.is_pinned).length);
   } catch (e) {
     console.error("Échec du chargement initial :", e);
     setError("Impossible de charger les données.");
@@ -66,6 +68,18 @@ export const loadNotesByTag = async (tag_id: string) => {
   } catch (err) {
     console.error("Erreur loadNotesByTag:", err);
     setError("Impossible de charger les notes par tag.");
+  }
+};
+
+export const loadPinnedNotes = async () => {
+  setError(null);
+  try {
+    const n = await api.getPinnedNotes();
+    setNotes(reconcile(n));
+    setLengthNotesPinned(n.length);
+  } catch (err) {
+    console.error("Erreur loadPinnedNotes:", err);
+    setError("Impossible de charger les notes épinglées.");
   }
 };
 
@@ -344,5 +358,24 @@ export const removeTag = async (tagId: string) => {
   } catch (err) {
     console.error("Erreur removeTag:", err);
     setError("Impossible de supprimer le tag.");
+  }
+}
+
+// ── Pin ───────────────────────────────────────
+export const togglePin = async (id: string, currentStatus: boolean) => {
+  setError(null);
+  try {
+    const newStatus = await api.toggleNotePin(id, currentStatus);
+
+    setNotes(
+      (note) => note.id === id,
+      "is_pinned",
+      newStatus
+    )
+
+    setLengthNotesPinned(notes.filter(note => note.is_pinned).length);
+  } catch (err) {
+    console.error("Erreur togglePin:", err);
+    setError("Impossible de changer le statut d'épingle.");
   }
 }

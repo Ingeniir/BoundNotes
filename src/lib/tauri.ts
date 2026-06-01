@@ -21,6 +21,9 @@ export const updateNote = (
 export const getNotesByTag = (tag_id: string) =>
   invoke<Note[]>("get_notes_by_tag", { tagId: tag_id });
 
+export const getPinnedNotes = () =>
+  invoke<Note[]>("get_pinned_notes");
+
 export const trashNote = (id: string) => invoke("trash_note", { id });
 export const restoreNote = (id: string) => invoke("restore_note", { id });
 export const deleteNote = (id: string) => invoke("delete_note", { id });
@@ -57,3 +60,7 @@ export const getTagsForNote = (note_id: string) =>
 
 export const removeTag = (tag_id: string) =>
   invoke("remove_tag", { tagId: tag_id });
+
+// ── Pin ─────────────────────────────────────────────
+export const toggleNotePin = (id: string, currentStatus: boolean) =>
+  invoke<boolean>("toggle_note_pin", { id, currentStatus });

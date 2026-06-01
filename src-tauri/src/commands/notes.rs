@@ -312,3 +312,70 @@ pub fn get_notes_by_tag(db: State<'_, Db>, tag_id: String) -> AppResult<Vec<Note
 
     Ok(notes)
 }
+
+#[tauri::command]
+pub fn get_pinned_notes(db: State<'_, Db>) -> AppResult<Vec<Note>> {
+    let conn = db.0.lock().unwrap();
+
+    let sql = "
+        SELECT
+            n.id, n.notebook_id, n.title, n.excerpt, n.word_count,
+            n.is_pinned, n.is_trashed, n.trashed_at, n.created_at, n.updated_at,
+            COALESCE(
+                json_group_array(
+                    json_object('id', t.id, 'name', t.name, 'color', t.color, 'position', t.position)
+                ) FILTER (WHERE t.id IS NOT NULL),
+                '[]'
+            ) as tags
+        FROM notes n
+        LEFT JOIN note_tags nt ON nt.note_id = n.id
+        LEFT JOIN tags t ON t.id = nt.tag_id
+        WHERE n.is_pinned = 1 AND n.is_trashed = 0
+        GROUP BY n.id
+        ORDER BY n.updated_at DESC
+    ";
+
+    let mut stmt = conn.prepare(sql)?;
+
+    let notes = stmt
+        .query_map([], |row| {
+            let tags_json: String = row.get(10)?;
+            Ok(Note {
+                id: row.get(0)?,
+                notebook_id: row.get(1)?,
+                title: row.get(2)?,
+                excerpt: row.get(3)?,
+                word_count: row.get(4)?,
+                is_pinned: row.get::<_, i64>(5)? != 0,
+                is_trashed: row.get::<_, i64>(6)? != 0,
+                trashed_at: row.get(7)?,
+                created_at: row.get(8)?,
+                updated_at: row.get(9)?,
+                tags: parse_tags(&tags_json), // Utilise ta fonction de parsing existante
+            })
+        })?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(notes)
+}
+
+#[tauri::command]
+pub fn toggle_note_pin(db: State<'_, Db>, id: String, current_status: bool) -> AppResult<bool> {
+    let conn = db.0.lock().unwrap();
+
+    // On inverse le statut actuel (true devient false, et inversement)
+    let new_status = !current_status;
+    let is_pinned_value = if new_status { 1 } else { 0 };
+
+    conn.execute(
+        "UPDATE notes SET is_pinned = ?1, updated_at = ?2 WHERE id = ?3",
+        params![
+            is_pinned_value,
+            chrono::Utc::now().timestamp_millis(), // Optionnel : on met à jour la date de modif
+            id
+        ],
+    )?;
+
+    // On renvoie le nouveau statut pour que le front confirme le changement
+    Ok(new_status)
+}

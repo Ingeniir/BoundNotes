@@ -41,6 +41,8 @@ pub fn run() {
             commands::notes::delete_note,
             commands::notes::search_notes,
             commands::notes::get_notes_by_tag,
+            commands::notes::get_pinned_notes,
+            commands::notes::toggle_note_pin,
             // Notebooks
             commands::notebooks::get_notebooks,
             commands::notebooks::create_notebook,

@@ -1,5 +1,5 @@
 import { For, Show, createSignal, createMemo, type JSX } from "solid-js";
-import { notebooks, newNotebook, removeNotebook, loadNotes, lengthNotes, tags, activeTags, loadNotesByTag, removeTag } from "@stores/notesStore";
+import { notebooks, newNotebook, removeNotebook, loadNotes, lengthNotes, tags, loadNotesByTag, removeTag, loadPinnedNotes, lengthNotesPinned } from "@stores/notesStore";
 import {
   sidebarView, setSidebarView,
   activeSidebarId, setActiveSidebarId,
@@ -15,7 +15,8 @@ import {
   ChevronRight, Check, X,
   Folder,
   FolderOpen,
-  Tag
+  Tag,
+  Pin
 } from "lucide-solid";
 import Notebook from "lucide-solid/icons/notebook";
 import { tagColor } from "@utils/colorTag";
@@ -39,6 +40,18 @@ export function Sidebar() {
             loadNotes();
           }}
           counter={lengthNotes()}
+        />
+
+        <SidebarItem
+          label="Pinned"
+          icon={<Pin size={16} />}
+          active={sidebarView() === "pinned"}
+          onClick={() => {
+            setSidebarView("pinned");
+            setActiveSidebarId(null);
+            loadPinnedNotes();
+          }}
+          counter={lengthNotesPinned()}
         />
 
         {/* Section Carnets */}
