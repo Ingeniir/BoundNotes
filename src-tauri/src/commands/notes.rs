@@ -219,7 +219,8 @@ pub fn delete_note(db: State<'_, Db>, id: String) -> AppResult<()> {
 #[tauri::command]
 pub fn search_notes(db: State<'_, Db>, query: String) -> AppResult<Vec<Note>> {
     let conn = db.0.lock().unwrap();
-    let fts_query = format!("{}*", query);
+    let safe_query = query.replace("\"", "\"\"");
+    let fts_query = format!("{}*", safe_query);
 
     let sql = "
         SELECT

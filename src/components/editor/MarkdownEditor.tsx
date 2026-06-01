@@ -1,6 +1,7 @@
 import { onMount, onCleanup, createEffect } from "solid-js";
-import { activeNote } from "../../stores/notesStore";
-import { useAutoSave } from "../../hooks/useAutoSave";
+import { activeNote } from "@stores/notesStore";
+import { setEditorMode } from "@stores/uiStore";
+import { useAutoSave } from "@hooks/useAutoSave";
 import { EditorView } from "codemirror";
 import { ViewPlugin, DecorationSet, Decoration, ViewUpdate } from "@codemirror/view"
 import { markdown } from "@codemirror/lang-markdown";
@@ -16,7 +17,6 @@ import {
   drawSelection,
   dropCursor,
   rectangularSelection,
-  crosshairCursor,
   highlightActiveLine,
   keymap
 } from "@codemirror/view";
@@ -110,6 +110,10 @@ const checkboxColorPlugin = ViewPlugin.fromClass(class {
   decorations: v => v.decorations
 })
 
+const toggleMode = () => {
+  setEditorMode(prev => prev === "editor" ? "preview" : "editor");
+}
+
 // Plugin qui ajoute la classe Pointer au survol des checkboxes
 const checkboxPointerPlugin = ViewPlugin.fromClass(class {
   decorations: DecorationSet;
@@ -194,6 +198,7 @@ export function MarkdownEditor() {
             { key: "Mod-k", run: toggleURL() },
             { key: "Mod-Shift-8", run: toggleBulletAndCheckedList("-") },
             { key: "Mod-Shift-l", run: toggleBulletAndCheckedList("- [ ]") },
+            { key: "Mod-Shift-c", run: toggleBulletAndCheckedList("- [x]") },
             ...closeBracketsKeymap,
             ...defaultKeymap,
             ...historyKeymap,

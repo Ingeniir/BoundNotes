@@ -33,7 +33,6 @@ export function MainPanel() {
       setTimeout(() => {
         if (titleInputRef) {
           titleInputRef.focus();
-          titleInputRef.select();
         }
       }, 100);
     };
@@ -122,6 +121,7 @@ export function MainPanel() {
                     when={activeNote()?.tags && activeNote().tags.length > 0}
                     fallback={<span class="text-xs text-gray-400 italic">No tags active</span>}
                   >
+                    <span class="text-lg font-medium text-gray-700">Tags actifs: </span>
                     <For each={activeNote().tags.filter((tag, i, arr) =>
                       arr.findIndex(t => t.id === tag.id) === i
                     )}>
@@ -171,10 +171,11 @@ export function MainPanel() {
                   </div>
                 </div>
                 <div class="flex flex-wrap gap-1.5 overflow-y-auto">
+                  <span class="text-lg font-medium text-gray-700">Tags disponibles: </span>
                   <For each={tags}>
                     {(tag) => (
                       <div
-                        class="px-2 py-0.5 rounded-full text-xs font-medium text-white shadow-sm cursor-pointer"
+                        class="flex items-center px-2 py-0.5 rounded-full text-xs font-medium text-white shadow-sm cursor-pointer"
                         style={{ "background-color": tag.color || "#e5e7eb" }}
                         onClick={() => {
                           setValueTag(tag.name);
