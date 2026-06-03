@@ -153,7 +153,11 @@ export function MarkdownEditor() {
           syntaxHighlighting(customCodeStyle),
           EditorView.theme({
             "&": { height: "100%", fontSize: "14px" },
-            ".cm-scroller": { overflow: "auto", fontFamily: "'JetBrains Mono', monospace" },
+
+            ".cm-content": {
+              paddingBottom: "10px !important",
+            },
+
             ".cm-activeLine": { backgroundColor: "rgba(100, 100, 100, 0.1)" },
             ".cm-gutters": {
               backgroundColor: "#f9f9f9",
@@ -192,6 +196,30 @@ export function MarkdownEditor() {
             ".cm-rust-function, .cm-rust-function *": {
               color: "#6f42c1", // violet
             },
+
+            ".cm-scroller": {
+              overflow: "auto",
+              fontFamily: "'JetBrains Mono', monospace",
+              /* Pour Firefox */
+              scrollbarWidth: "thin",
+              scrollbarColor: "#cbd5e1 transparent"
+            },
+
+
+            ".cm-scroller::-webkit-scrollbar": {
+              width: "8px",
+              height: "8px",
+            },
+            ".cm-scroller::-webkit-scrollbar-track": {
+              background: "transparent",
+            },
+            ".cm-scroller::-webkit-scrollbar-thumb": {
+              backgroundColor: "#cbd5e1", // Gris clair
+              borderRadius: "4px",
+            },
+            ".cm-scroller::-webkit-scrollbar-thumb:hover": {
+              backgroundColor: "#94a3b8", // Gris moyen au survol
+            },
           }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -200,6 +228,9 @@ export function MarkdownEditor() {
               schedule({ content });
             }
           }),
+          EditorView.scrollMargins.of((view) => {
+            return { bottom: 200 }
+          })
         ],
       }),
       parent: container,
