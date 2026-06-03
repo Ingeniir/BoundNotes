@@ -20,6 +20,7 @@
     "core:window:allow-is-maximized",
     "core:window:allow-toggle-maximize",
     "core:window:allow-start-dragging",
+    "core:window:allow-show",
     "store:default",
     "store:allow-get",
     "store:allow-set",

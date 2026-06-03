@@ -11,11 +11,17 @@ import { Presence, Motion } from 'solid-motionone';
 import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
 import { ShortcutsPanel } from '@components/modals/ShortcutsPanel';
 import { getLastNodeId } from '@lib/persistence';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 
 const App: Component = () => {
 
   onMount(async () => {
+
+    const Window = getCurrentWindow();
+
     await loadAll();
+
+    Window.show();
 
     const lastId = await getLastNodeId();
     if (lastId) {
