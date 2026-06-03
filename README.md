@@ -1,97 +1,179 @@
-# [Tauri](https://tauri.app) + [Solid](https://solidjs.com) + [Tailwind CSS](https://tailwindcss.com) + [TypeScript](https://typescriptlang.org) + [Vite](https://vitejs.dev) Starter
+# BoundNotes
 
-[//]:[![Stars](https://img.shields.io/github/stars/AR10Dev/tauri-solid-ts-tailwind-vite?style=social)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![Rust](https://img.shields.io/badge/Rust-black?style=for-the-badge&logo=rust&logoColor=#E57324)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![Typescript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![Solid JS](https://img.shields.io/badge/SolidJS-2C4F7C?style=for-the-badge&logo=solid&logoColor=white)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![Tauri](https://img.shields.io/badge/Tauri-24C8D8?style=for-the-badge&logo=tauri&logoColor=white)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite)
+A fast, local-first markdown note-taking application built as a personal alternative to Inkdrop — with exactly the features you want, nothing more.
 
-A starter template for [Tauri](https://tauri.app) + [Solid](https://solidjs.com) App that comes preconfigured with [Vite](https://vitejs.dev),
-[TypeScript](https://typescriptlang.org), [Tailwind CSS](https://tailwindcss.com), [ESLint](https://eslint.org), [Prettier](https://prettier.io) and HMR (Hot Module Replacement).
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+![Tauri](https://img.shields.io/badge/Tauri-v2-blue)
+![SolidJS](https://img.shields.io/badge/SolidJS-v1.9-blue)
+![Rust](https://img.shields.io/badge/Rust-2024-orange)
+
+---
 
 ## Features
 
-- 🤩 [Tauri](https://tauri.app) - Build smaller, faster, and more secure desktop and mobile applications with a web frontend.
+- **Pure Markdown editor** powered by CodeMirror with syntax highlighting, line numbers, and custom keybindings
+- **Live preview** with math (KaTeX), syntax highlighting (highlight.js), GFM tables, task lists, and local image support
+- **Synchronized scrolling** between editor and preview in split mode
+- **Notebooks** with nested hierarchy (notebooks inside notebooks) and a tree view in the sidebar
+- **Tags** with color support, filterable from the sidebar
+- **Pinned notes** section for quick access
+- **Full-text search** powered by SQLite FTS5
+- **Interactive checkboxes** — clickable in both editor and preview
+- **Custom title bar** with minimize, maximize, and close controls (no native decorations)
+- **Last opened note** restored on relaunch via persistent storage
+- **Trash** with restore and permanent delete
+- **Sort notes** by title, creation date, or last updated
+- **Context menu** on notes (rename, pin/unpin, trash)
+- **Keyboard shortcuts** centralized and CodeMirror-aware
+- **Dark / Light theme** toggle
+- **Animated UI** with smooth transitions on sidebar and note list
 
-- ⚡️ [Solid](https://solidjs.com) & [Vite](https://vitejs.dev) - Simple and performant reactivity for building user interfaces.
+---
 
-- 🎨 [Tailwind CSS](https://tailwindcss.com) - A utility-first CSS framework for rapid UI development.
+## Tech Stack
 
-- 💪 [TypeScript](https://typescriptlang.org) - it's JavaScript with syntax for types.
+| Layer | Technology |
+|---|---|
+| Framework | [Tauri v2](https://tauri.app) |
+| Frontend | [SolidJS](https://solidjs.com) + [TypeScript](https://typescriptlang.org) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) |
+| Build tool | [Vite](https://vitejs.dev) |
+| Package manager | [Bun](https://bun.sh) |
+| Database | SQLite via [rusqlite](https://github.com/rusqlite/rusqlite) (bundled) |
+| Editor | [CodeMirror 6](https://codemirror.net) |
+| Markdown | [remark](https://remark.js.org) / [rehype](https://github.com/rehypejs/rehype) ecosystem |
+| Animations | [solid-motionone](https://motion.dev/solid) + [solid-transition-group](https://github.com/solidjs-community/solid-transition-group) |
 
-- 👌 [ESLint](https://eslint.org) + [Prettier](https://prettier.io) - ESLint find problems in your code and Prettier format your code for an easy life.
+---
 
-<br>
+## Project Structure
 
-## Getting started
-
-### GitHub Template
-
-[Create a repo from this template on GitHub](https://github.com/AR10Dev/tauri-solid-ts-tailwind-vite/generate)
-
-### Clone to local
-
-If you prefer to do it manually with the cleaner git history
-
-```bash
-npx degit AR10Dev/tauri-solid-ts-tailwind-vite my-app # or bunx degit AR10Dev/tauri-solid-ts-tailwind-vite my-app
-cd my-app
-npm install # or pnpm install or yarn install or bun install
+```
+boundnotes/
+├── src/                        # Frontend (SolidJS)
+│   ├── components/
+│   │   ├── layout/
+│   │   │   ├── Sidebar.tsx     # Notebooks, tags, navigation
+│   │   │   ├── NoteList.tsx    # Note list with search and sort
+│   │   │   ├── MainPanel.tsx   # Editor + preview panel
+│   │   │   └── TitleBar.tsx    # Custom window controls
+│   │   ├── editor/
+│   │   │   ├── MarkdownEditor.tsx   # CodeMirror editor
+│   │   │   └── MarkdownPreview.tsx  # Remark/rehype renderer
+│   │   └── ui/                 # Reusable UI components
+│   ├── stores/
+│   │   ├── notesStore.ts       # Notes, notebooks, tags state
+│   │   └── uiStore.ts          # UI state (theme, sidebar, editor mode)
+│   ├── hooks/
+│   │   ├── useAutoSave.ts      # Debounced auto-save (800ms)
+│   │   └── useKeyboardShortcuts.ts  # Global shortcut manager
+│   ├── lib/
+│   │   ├── tauri.ts            # Typed Tauri invoke wrappers
+│   │   ├── persistence.ts      # Last note persistence via plugin-store
+│   │   └── notebookTree.ts     # Flat → tree structure builder
+│   ├── utils/
+│   │   ├── rehypePlugins.ts    # Custom rehype plugins
+│   │   └── keymapCodeMirror.ts # Custom CodeMirror keybindings
+│   └── types/
+│       └── index.ts            # Shared TypeScript types
+│
+└── src-tauri/                  # Backend (Rust)
+    ├── src/
+    │   ├── lib.rs              # Tauri builder + plugin setup
+    │   ├── error.rs            # AppError with thiserror
+    │   ├── db/
+    │   │   ├── mod.rs          # SQLite pool initialization
+    │   │   └── migrations.rs   # Schema versioning system
+    │   ├── models/
+    │   │   ├── note.rs
+    │   │   ├── notebook.rs
+    │   │   └── tag.rs
+    │   └── commands/
+    │       ├── notes.rs        # CRUD + FTS5 search
+    │       ├── notebooks.rs    # Nested notebooks CRUD
+    │       └── tags.rs         # Tags + note-tag relations
+    └── Cargo.toml
 ```
 
-### Note
-For use Tauri you need to Setup your environment following this [guide](https://tauri.app/start/prerequisites/)
+---
 
-## Checklist
+## Database Schema
 
-When you use this template, follow the checklist to update your info properly
+SQLite with WAL mode, FTS5 full-text search, and a migration versioning system.
 
-- [ ] Rename `name`, `version` and `author` field in `package.json`
-- [ ] Rename `version`, `description`, `authors` and `repository` field in `src-tauri/Cargo.toml`
-- [ ] Rename `productName`, `version`, `identifier` field in `src-tauri/tauri.conf.json`
-- [ ] Change the `build` configuration in `src-tauri/tauri.conf.json` if you are using a different package manager than bun
-- [ ] Change the author name in `LICENSE`
-- [ ] Clean up the READMEs
-- [ ] Optional: Remove the `.github` folder which contains the github action for cross compilation
-- [ ] Optional: Remove the `.devcontainer` folder which contains the devcontainer configuration
-- [ ] Enjoy 😉
+```
+notes          — metadata (title, excerpt, word_count, is_pinned, is_trashed...)
+note_contents  — content separated for performance (loaded only when a note is opened)
+notebooks      — hierarchical via parent_id
+tags           — with color and position
+note_tags      — many-to-many relation
+notes_fts      — FTS5 virtual table with auto-sync triggers
+schema_migrations — version tracking
+```
 
-## Usage
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl + B` | Toggle note list |
+| `Ctrl + N` | New note |
+| `Ctrl + Shift + E` | Editor mode |
+| `Ctrl + Shift + P` | Preview mode |
+| `Ctrl + Shift + S` | Split mode |
+| `Ctrl + Delete` | Trash active note |
+| `Ctrl + /` | Show shortcuts panel |
+| `Ctrl + B` | Bold (in editor) |
+| `Ctrl + I` | Italic (in editor) |
+| `Ctrl + 1-4` | Heading 1–4 (in editor) |
+| `Ctrl + K` | Insert link (in editor) |
+| `Ctrl + E` | Inline code (in editor) |
+| `Ctrl + Alt + G` | Code block (in editor) |
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- [Bun](https://bun.sh) >= 1.0
+- [Rust](https://rustup.rs) stable toolchain
+- Tauri v2 prerequisites for your OS → [tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/)
 
 ### Development
 
 ```bash
-npm run dev:tauri # or pnpm dev:tauri or yarn dev:tauri or bun dev:tauri
+# Install dependencies
+bun install
+
+# Start in development mode
+bun run dev:tauri
 ```
-
-Runs the app in the development mode.<br>
-
-The first time you run this command, it will take several minutes for the Rust package manager to download and build all the required packages. Since they are cached, subsequent builds will be much faster, as only your code will need rebuilding.<br>
-
-If you make edits to the page in the webview, it should update automatically, just like a browser would reload. When you make edits to the Rust files, they will be rebuilt automatically, and your app will restart.<br>
 
 ### Build
 
 ```bash
-npm run build:tauri # or pnpm build:tauri or yarn build:tauri or bun build:tauri
+# Build for production
+bun run build:tauri
 ```
 
-Builds Solid to the `dist` folder and after will embed it into a single binary with your Rust code.<br>
-The binary itself will be located in `src-tauri/target/release/[app name]`, and installers will be located in `src-tauri/target/release/bundle/`<br>
+The output binary will be in `src-tauri/target/release/`.
 
-Like the `dev:tauri` command, the first time you run this, it will take some time to collect the Rust crates and build everything, but on subsequent runs, it will only need to rebuild your code, which is much quicker.<br>
+---
 
-It correctly bundles Solid in production mode and optimizes the binary for the best performance.<br>
+## Architecture Decisions
 
-🎉 Congratulations, your app is ready to be release!
+**rusqlite over sqlx** — sqlx's compile-time query verification requires a `DATABASE_URL` at build time and a `cargo sqlx prepare` step that adds friction. rusqlite with the `bundled` feature embeds SQLite directly in the binary with zero configuration.
 
-## Custom App Icon
-To generate your custom app icon you can follow this [guide](https://tauri.app/reference/cli/#icon).<br>
-Your new app icons will be located in `src-tauri/icons/` and remeber to update the `icon` field in `src-tauri/tauri.conf.json` with all your new icon path names.<br>
+**SolidJS over React** — Fine-grained reactivity without a virtual DOM makes it a natural fit for a Tauri app where startup time and memory usage matter. `createStore` with `produce` and `reconcile` enables surgical updates to the note list without full re-renders.
 
-## Customize the tauri.conf.json
+**Content separated from metadata** — `note_contents` is a separate table from `notes`. The note list only loads metadata (title, excerpt, word count, tags), and the full content is fetched only when a note is opened. This keeps the list fast regardless of note size.
 
-To modify and personalize your app, you need to edit `src-tauri/tauri.conf.json` by following this [guide](https://tauri.app/develop/configuration-files/)
+**FTS5 with triggers** — Full-text search is maintained automatically via SQLite triggers on `note_contents` inserts, updates, and deletes. No manual index management needed.
+
+---
+
+## License
+
+MIT
