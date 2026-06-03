@@ -8,6 +8,11 @@ import { RangeSetBuilder } from "@codemirror/state";
 export const pointerDecoration = Decoration.mark({ class: "cm-checkbox-hover" });
 export const checkboxUncheckedMark = Decoration.mark({ class: "cm-checkbox-unchecked" });
 export const checkboxCheckedMark = Decoration.mark({ class: "cm-checkbox-checked" });
+
+// Typescript/JavaScript
+export const tsFunctionMark = Decoration.mark({ class: "cm-balise" });
+
+// Rust
 export const rustFunctionMark = Decoration.mark({ class: "cm-rust-function" });
 
 // ==========================================
@@ -98,3 +103,59 @@ export const rustFunctionPlugin = ViewPlugin.fromClass(class {
         return builder.finish();
     }
 }, { decorations: v => v.decorations });
+
+// Plugin qui détecte les balise et applique une classe
+export const detectBalise = ViewPlugin.fromClass(class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+        this.decorations = this.buildDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+        // On ne recalcule que si le document a changé ou si l'utilisateur a scrollé
+        if (update.docChanged || update.viewportChanged) {
+            this.decorations = this.buildDecorations(update.view);
+        }
+    }
+
+    buildDecorations(view: EditorView) {
+        const builder = new RangeSetBuilder<Decoration>();
+        const regex = /<\/?([a-zA-Z0-9:-]+)([^>]*)\/?>/g;
+
+        let inCodeBlock = false;
+
+        for (let i = 1; i <= view.state.doc.lines; i++) {
+            const line = view.state.doc.line(i);
+            const trimmedText = line.text.trim();
+
+            if (trimmedText.startsWith("```typescript") || trimmedText.startsWith("```javascript")) {
+                inCodeBlock = true;
+                continue;
+            } else if (trimmedText.startsWith("```") && inCodeBlock) {
+                inCodeBlock = false;
+                continue;
+            }
+
+            if (inCodeBlock && line.from >= view.viewport.from && line.to <= view.viewport.to) {
+                let match;
+                regex.lastIndex = 0;
+
+                while ((match = regex.exec(line.text)) !== null) {
+                    const tagName = match[1];
+
+                    const nameIndex = match.index + match[0].indexOf(tagName);
+
+                    const start = line.from + nameIndex;
+                    const end = start + tagName.length;
+
+                    builder.add(start, end, tsFunctionMark);
+                }
+            }
+        }
+
+        return builder.finish();
+    }
+}, {
+    decorations: v => v.decorations
+});

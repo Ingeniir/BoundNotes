@@ -4,7 +4,7 @@ import {
   sidebarView, setSidebarView,
   activeSidebarId, setActiveSidebarId,
   theme, toggleTheme,
-  setActiveTagId
+  setActiveTagId, showSidebar
 } from "@stores/uiStore";
 import { buildNotebookTree } from "@lib/notebookTree";
 import type { NotebookNode } from "../../types";
@@ -25,108 +25,118 @@ export function Sidebar() {
   const tree = createMemo(() => buildNotebookTree(notebooks));
 
   return (
-    <aside class="w-50 shrink-0 h-full flex flex-col bg-gray-50 border-r border-gray-200 select-none font-inter">
+    <Presence exitBeforeEnter>
+      <Show when={showSidebar()}>
+        <Motion.aside
+          initial={{ opacity: 0, width: "0px" }}
+          animate={{ opacity: 1, width: "200px" }}
+          exit={{ opacity: 0, width: "0px" }}
+          transition={{ duration: 0.2, easing: "ease-in-out" }}
+          class="w-50 shrink-0 h-full flex flex-col bg-gray-50 border-r border-gray-200 select-none font-inter overflow-hidden"
+        >
 
-      {/* Navigation */}
-      <nav class="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+          {/* Navigation */}
+          <nav class="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
 
-        <SidebarItem
-          label="All notes"
-          icon={<FileText size={16} />}
-          active={sidebarView() === "all"}
-          onClick={() => {
-            setSidebarView("all");
-            setActiveSidebarId(null);
-            loadNotes();
-          }}
-          counter={lengthNotes()}
-        />
+            <SidebarItem
+              label="All notes"
+              icon={<FileText size={16} />}
+              active={sidebarView() === "all"}
+              onClick={() => {
+                setSidebarView("all");
+                setActiveSidebarId(null);
+                void loadNotes();
+              }}
+              counter={lengthNotes()}
+            />
 
-        <SidebarItem
-          label="Pinned"
-          icon={<Pin size={16} />}
-          active={sidebarView() === "pinned"}
-          onClick={() => {
-            setSidebarView("pinned");
-            setActiveSidebarId(null);
-            loadPinnedNotes();
-          }}
-          counter={lengthNotesPinned()}
-        />
+            <SidebarItem
+              label="Pinned"
+              icon={<Pin size={16} />}
+              active={sidebarView() === "pinned"}
+              onClick={() => {
+                setSidebarView("pinned");
+                setActiveSidebarId(null);
+                void loadPinnedNotes();
+              }}
+              counter={lengthNotesPinned()}
+            />
 
-        {/* Section Carnets */}
-        <NotebooksSection tree={tree()} />
+            {/* Section Carnets */}
+            <NotebooksSection tree={tree()} />
 
-        {/* Tags */}
-        <div class="pt-3 pb-1 px-2">
-          <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-            Tags
-          </span>
-        </div>
-        <Show when={tags.length > 0}>
-          <For each={tags}>
-            {(tag) => (
-              <button
-                onClick={() => {
-                  setSidebarView("tag");
-                  setActiveSidebarId(tag.id);
-                  setActiveTagId(tag.id);
-                  loadNotesByTag(tag.id);
-                }}
-                class={clsx(
-                  "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left",
-                  sidebarView() === "tag" && activeSidebarId() === tag.id
-                    ? "bg-gray-200 text-black font-medium"
-                    : "text-gray-700 hover:bg-gray-100"
-                )}
-              >
-                <div class="flex items-center gap-2">
-                  <span
-                    class="flex items-center w-2.5 h-2.5 rounded-full shrink-0"
-                    style={{ "background-color": tag.color ?? "#e5e7eb" }}
-                  />
-                  <span class="truncate">{tag.name}</span>
-                </div>
-                <span>
-                  <Trash
-                    size={12}
-                    class="text-gray-400 hover:text-red-500 transition-colors" onClick={(e) => {
-                      e.stopPropagation();
-                      if (tag.id) {
-                        setActiveTagId(tag.id);
-                        removeTag(tag.id);
-                      }
+            {/* Tags */}
+            <div class="pt-3 pb-1 px-2">
+              <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Tags
+              </span>
+            </div>
+            <Show when={tags.length > 0}>
+              <For each={tags}>
+                {(tag) => (
+                  <button
+                    onClick={() => {
+                      setSidebarView("tag");
+                      setActiveSidebarId(tag.id);
+                      setActiveTagId(tag.id);
+                      void loadNotesByTag(tag.id);
                     }}
-                  />
-                </span>
-              </button>
-            )}
-          </For>
-        </Show>
+                    class={clsx(
+                      "w-full flex items-center justify-between gap-2 px-2 py-1.5 rounded-md text-sm transition-colors text-left",
+                      sidebarView() === "tag" && activeSidebarId() === tag.id
+                        ? "bg-gray-200 text-black font-medium"
+                        : "text-gray-700 hover:bg-gray-100"
+                    )}
+                  >
+                    <div class="flex items-center gap-2">
+                      <span
+                        class="flex items-center w-2.5 h-2.5 rounded-full shrink-0"
+                        style={{ "background-color": tag.color ?? "#e5e7eb" }}
+                      />
+                      <span class="truncate">{tag.name}</span>
+                    </div>
+                    <span>
+                      <Trash
+                        size={12}
+                        class="text-gray-400 hover:text-red-500 transition-colors" onClick={(e) => {
+                          e.stopPropagation();
+                          if (tag.id) {
+                            setActiveTagId(tag.id);
+                            void removeTag(tag.id);
+                          }
+                        }}
+                      />
+                    </span>
+                  </button>
+                )}
+              </For>
+            </Show>
 
-        {/* Corbeille */}
-        <div class="pt-2">
-          <SidebarItem
-            label="Trash"
-            icon={<Trash2 size={16} class="text-red-400" />}
-            active={sidebarView() === "trash"}
-            onClick={() => {
-              setSidebarView("trash");
-              setActiveSidebarId(null);
-              loadNotes(undefined, true);
-            }}
-          />
-        </div>
+            {/* Corbeille */}
+            <div class="pt-2">
+              <SidebarItem
+                label="Trash"
+                icon={<Trash2 size={16} class="text-red-400" />}
+                active={sidebarView() === "trash"}
+                onClick={() => {
+                  setSidebarView("trash");
+                  setActiveSidebarId(null);
+                  void loadNotes(undefined, true);
+                }}
+              />
+            </div>
 
-      </nav>
+          </nav>
 
-      {/* Thème */}
-      <div class="px-4 py-3 border-t border-gray-200">
-        <button onClick={toggleTheme} class="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          {theme() === "light" ? <Moon size={16} /> : <Sun size={16} />}
-        </button>
-      </div>
-    </aside >
+          {/* Thème */}
+          <div class="px-4 py-3 border-t border-gray-200">
+            <button onClick={toggleTheme} class="text-sm text-gray-500 hover:text-gray-900 transition-colors">
+              {theme() === "light" ? <Moon size={16} /> : <Sun size={16} />}
+            </button>
+          </div>
+        </Motion.aside >
+      </Show>
+    </Presence>
   );
 }
 
@@ -186,7 +196,7 @@ function NotebooksSection(props: { tree: NotebookNode[] }) {
               ref={inputRef}
               value={newName()}
               onInput={setNewName}
-              onConfirm={confirmCreate}
+              onConfirm={() => { void confirmCreate(); }}
               onCancel={cancelCreate}
               depth={0}
             />
@@ -216,7 +226,7 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
   const handleClick = () => {
     setSidebarView("notebook");
     setActiveSidebarId(props.node.id);
-    loadNotes(props.node.id);
+    void loadNotes(props.node.id);
   };
 
   const startCreatingChild = (e: MouseEvent) => {
@@ -288,7 +298,7 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
           <button
             onClick={(e) => {
               e.stopPropagation();
-              removeNotebook(props.node.id);
+              void removeNotebook(props.node.id);
             }}
             title="Supprimer"
             class="p-0.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
@@ -322,7 +332,7 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
                   ref={inputRef}
                   value={newName()}
                   onInput={setNewName}
-                  onConfirm={confirmCreateChild}
+                  onConfirm={() => { void confirmCreateChild(); }}
                   onCancel={cancelCreateChild}
                   depth={props.depth + 1}
                 />

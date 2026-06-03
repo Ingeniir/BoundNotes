@@ -25,9 +25,13 @@ import { bracketMatching, indentOnInput } from "@codemirror/language";
 import { searchKeymap, highlightSelectionMatches } from "@codemirror/search";
 import { autocompletion, closeBracketsKeymap, completionKeymap } from "@codemirror/autocomplete";
 import { toggleCodeBlock, toggleHeading, toggleInlineMarkdown, toggleURL, toggleBulletAndCheckedList } from "@utils/keymapCodeMirror"
-import { checkboxColorPlugin, checkboxPointerPlugin, rustFunctionPlugin, pointerDecoration } from "@utils/codemirrorPlugins"
+import { checkboxColorPlugin, checkboxPointerPlugin, rustFunctionPlugin, pointerDecoration, detectBalise } from "@utils/codemirrorPlugins"
 
 import "@styles/editor.css"
+
+interface MarkdownEditorProps {
+  onScroll?: (ratio: number) => void;
+}
 
 const customHeadingStyle = HighlightStyle.define([
   { tag: t.heading1, fontSize: "1.5em", fontWeight: "bold" },
@@ -55,7 +59,7 @@ const customCodeStyle = HighlightStyle.define([
 ]);
 
 
-export function MarkdownEditor() {
+export function MarkdownEditor(props: MarkdownEditorProps) {
   let container!: HTMLDivElement;
   let view: EditorView | undefined;
 
@@ -146,6 +150,7 @@ export function MarkdownEditor() {
           checkboxPointerPlugin,
           checkboxColorPlugin,
           rustFunctionPlugin,
+          detectBalise,
           markdown({ codeLanguages: languages }),
           EditorView.lineWrapping,
           syntaxHighlighting(customHeadingStyle),
@@ -220,6 +225,10 @@ export function MarkdownEditor() {
             ".cm-scroller::-webkit-scrollbar-thumb:hover": {
               backgroundColor: "#94a3b8", // Gris moyen au survol
             },
+
+            ".cm-balise": {
+              color: "#6f42c1", // violet
+            }
           }),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
@@ -230,6 +239,13 @@ export function MarkdownEditor() {
           }),
           EditorView.scrollMargins.of((view) => {
             return { bottom: 200 }
+          }),
+          EditorView.domEventHandlers({
+            scroll(e, view) {
+              const scroller = view?.scrollDOM;
+              const ratio = scroller.scrollTop / (scroller.scrollHeight - scroller.clientHeight);
+              props.onScroll?.(isNaN(ratio) ? 0 : ratio);
+            }
           })
         ],
       }),

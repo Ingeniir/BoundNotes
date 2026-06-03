@@ -3,7 +3,7 @@ import { createStore, produce, reconcile } from "solid-js/store";
 import type { Note, NoteWithContent, Notebook, Tag } from "../types";
 import * as api from "@lib/tauri";
 import { persistLastNodeId } from "@lib/persistence";
-import { setActiveSidebarId, setSidebarView } from "./uiStore";
+import { setActiveSidebarId, setSidebarView, sidebarView } from "./uiStore";
 
 // ── État ───────────────────────────────────────────────
 const [notes, setNotes] = createStore<Note[]>([]);
@@ -372,6 +372,14 @@ export const togglePin = async (id: string, currentStatus: boolean) => {
       "is_pinned",
       newStatus
     )
+
+    if (sidebarView() === "pinned" && !newStatus) {
+      setNotes(produce(notes => {
+        const i = notes.findIndex(n => n.id === id);
+        if (i !== -1) notes.splice(i, 1);
+      }))
+      if (activeNote()?.id === id) setActiveNote(null);
+    }
 
     setLengthNotesPinned(notes.filter(note => note.is_pinned).length);
   } catch (err) {

@@ -12,6 +12,7 @@
 @theme {
   --font-roboto-slab: 'Roboto Slab', serif;
   --font-inter: 'Inter', sans-serif;
+  --font-jetbrains-mono: 'JetBrains Mono', monospace;
 }
 
 @layer base {

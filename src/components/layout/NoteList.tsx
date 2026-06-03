@@ -1,9 +1,12 @@
 import { For, Show, createMemo, createSignal, onCleanup, onMount, type JSX } from "solid-js";
 import { notes, activeNote, openNote, newNote, loading, restoreNote, deleteNote, searchNotes, cancelSearch, trashActiveNote, notebooks, togglePin } from "@stores/notesStore";
-import { activeSidebarId, sidebarView, setSearchQuery, showListNotes } from "@stores/uiStore";
+import { activeSidebarId, sidebarView, setSearchQuery, showListNotes, showSidebar, setShowSidebar } from "@stores/uiStore";
 import { clsx } from "clsx";
 import { Motion, Presence } from "solid-motionone";
-import { SquarePen, Search, Pin, ArrowDownAZ, RotateCcw, Trash, Tag } from "lucide-solid";
+import { TransitionGroup } from "solid-transition-group";
+import { SquarePen, Search, Pin, ArrowDownAZ, RotateCcw, Trash, Tag, Menu } from "lucide-solid";
+import { Notebook } from "@types/index";
+
 
 export function NoteList() {
   let searchTimer: ReturnType<typeof setTimeout> | undefined;
@@ -14,12 +17,36 @@ export function NoteList() {
   const [isReversed, setIsReversed] = createSignal<boolean>(false);
   const [modeSort, setModeSort] = createSignal<"title" | "date" | "updated">("title");
 
-  const notebookMap = createMemo(() => new Map(notebooks.map(nb => [nb.id, nb.name])));
+  const SidebarViewConditions = sidebarView() === "notebook" || sidebarView() === "all" || sidebarView() === "pinned";
+
+  const notebookMap = createMemo(() => {
+    const map = new Map<string, Notebook>();
+    for (const nb of notebooks) {
+      map.set(nb.id, nb);
+    }
+    return map;
+  });
+
+  const getNotebookPath = (notebookId: string): string => {
+    const map = notebookMap();
+    const parts: string[] = [];
+
+    let current = map.get(notebookId);
+    let depth = 0;
+
+    while (current && depth < 10) {
+      parts.unshift(current.name);
+      current = current.parent_id ? map.get(current.parent_id) : undefined;
+      depth++;
+    }
+
+    return parts.join(" / ");
+  }
 
   const handleSearch = (value: string) => {
     setSearchQuery(value);
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(() => searchNotes(value), 300);
+    searchTimer = setTimeout(() => { void searchNotes(value) }, 300);
   };
 
   onCleanup(() => {
@@ -70,23 +97,23 @@ export function NoteList() {
     <Presence exitBeforeEnter>
       <Show when={showListNotes()}>
         <Motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20, transition: { duration: 0.15 } }}
-          transition={{ duration: 0.3 }}
-          class="w-72 shrink-0 h-full flex flex-col border-r border-gray-200 bg-white font-inter"
+          initial={{ opacity: 0, width: "0px" }}
+          animate={{ opacity: 1, width: "288px" }}
+          exit={{ opacity: 0, width: "0px" }}
+          transition={{ duration: 0.3, easing: "ease-in-out" }}
+          class="w-72 shrink-0 h-full flex flex-col border-r border-gray-200 bg-white font-inter overflow-hidden"
         >
           {/* Header */}
           <div class="px-3 py-3 border-b border-gray-200 space-y-2">
-            <div class={clsx("flex items-center", sidebarView() !== "all" ? "justify-between" : "justify-end")}>
-              <Show when={sidebarView() !== "all"}>
-                <span class="text-sm font-semibold text-gray-700">
-                  {notes.length} note{notes.length !== 1 ? "s" : ""}
-                </span>
+            <div class={clsx("flex items-center", !showSidebar() ? "justify-between" : "justify-end")}>
+              <Show when={!showSidebar()}>
+                <button onClick={() => { void setShowSidebar(true); }} class="text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200 p-0.5 rounded-md font-medium transition-colors cursor-pointer" title="New note">
+                  <Menu size={16} />
+                </button>
               </Show>
               <div class="flex items-center gap-1">
                 <Show when={sidebarView() !== "trash"}>
-                  <button onClick={handleNewNote} class="text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200 p-0.5 rounded-md font-medium transition-colors cursor-pointer" title="New note">
+                  <button onClick={() => { void handleNewNote(); }} class="text-neutral-500 hover:text-neutral-800 hover:bg-neutral-200 p-0.5 rounded-md font-medium transition-colors cursor-pointer" title="New note">
                     <SquarePen size={16} />
                   </button>
                   <button
@@ -163,81 +190,92 @@ export function NoteList() {
                 }>
                   <div class="flex flex-col items-center justify-center h-32 text-sm text-gray-400 gap-2">
                     <span>No notes found</span>
-                    <Motion.button initial={{ scale: 1 }} hover={{ scale: 1.05 }} onClick={handleNewNote} class="text-blue-500 relative cursor-pointer">
+                    <Motion.button initial={{ scale: 1 }} hover={{ scale: 1.05 }} onClick={() => { void handleNewNote(); }} class="text-blue-500 relative cursor-pointer">
                       Create a note
                     </Motion.button>
                   </div>
                 </Show>
               }>
-                <For each={sortedNotes()}>
-                  {(note, index) => (
-                    <Motion.div
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0, transition: { delay: index() * 0.03 } }} // Légèrement accéléré pour plus de fluidité
-                      exit={{ opacity: 0, x: -10, transition: { duration: 0.2 } }}
-                    >
-                      <button
-                        onContextMenu={(e) => handleContextMenu(e, note.id)}
-                        onClick={() => openNote(note.id)}
-                        class={clsx(
-                          "relative w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors",
-                          activeNote()?.id === note.id && "bg-neutral-100 border-l-3 border-l-neutral-500"
-                        )}
-                      >
-                        <div class="flex items-start justify-between gap-2">
-                          <span class="flex items-center text-sm font-medium text-gray-900 leading-snug mb-3">
-                            {note.is_pinned && <Pin size={14} class="text-blue-500 mr-1" />}
-                            <div class={clsx(sidebarView() === "trash" && "line-through", "flex items-center gap-2")}>
-                              {/* O(1) Access via Map */}
-                              <Show when={note.notebook_id && (sidebarView() === "all" || sidebarView() === "trash")}>
-                                <span class="text-xs text-gray-400 font-normal">
-                                  {notebookMap().get(note.notebook_id) || ""}
-                                </span>
-                                <span class="h-0.5 bg-gray-300 w-2" />
-                              </Show>
-                              <span>{note.title}</span>
+                <TransitionGroup
+                  onEnter={(el, done) => {
+                    void el.animate([
+                      { opacity: 0, transform: "translateX(-10px)" },
+                      { opacity: 1, transform: "translateX(0)" }
+                    ], { duration: 200 }).finished.then(done);
+                  }}
+                  onExit={(el, done) => {
+                    void el.animate([
+                      { opacity: 1, transform: "translateX(0)" },
+                      { opacity: 0, transform: "translateX(-10px)" }
+                    ], { duration: 150 }).finished.then(done);
+                  }}
+                >
+                  <For each={sortedNotes()}>
+                    {(note) => (
+                      <div>
+                        <button
+                          onContextMenu={(e) => handleContextMenu(e, note.id)}
+                          onClick={() => { void openNote(note.id); }}
+                          class={clsx(
+                            "relative w-full text-left px-4 py-3 border-b border-gray-200 hover:bg-gray-50 transition-colors",
+                            activeNote()?.id === note.id && "bg-neutral-100 border-l-3 border-l-neutral-500"
+                          )}
+                        >
+                          <div class="flex items-start justify-between gap-2">
+                            <span class="flex items-center text-sm font-medium text-gray-900 leading-snug mb-3">
+                              {note.is_pinned && <Pin size={14} class="text-blue-500 mr-1" />}
+                              <div class={clsx(sidebarView() === "trash" && "line-through", "flex items-center gap-2")}>
+                                {/* O(1) Access via Map */}
+                                <Show when={note.notebook_id && SidebarViewConditions}>
+                                  <span class="text-xs text-gray-400 font-normal">
+                                    {getNotebookPath(note.notebook_id ? note.notebook_id : "") || ""}
+                                  </span>
+                                  <span class="h-0.5 bg-gray-300 w-2" />
+                                </Show>
+                                <span>{note.title}</span>
+                              </div>
+                            </span>
+                          </div>
+
+                          {note.excerpt && (
+                            <p class="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed mb-2">
+                              {note.excerpt}
+                            </p>
+                          )}
+
+                          <Show when={note.tags && note.tags.length > 0}>
+                            <div class="flex flex-wrap gap-1 mt-1.5 mb-2">
+                              <For each={note.tags}>
+                                {(tag) => (
+                                  <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-neutral-100 opacity-90" style={{ color: tag.color ?? "#374151" }}>
+                                    <Tag size={10} class="mr-0.5" />
+                                    {tag.name}
+                                  </span>
+                                )}
+                              </For>
                             </div>
-                          </span>
-                        </div>
+                          </Show>
 
-                        {note.excerpt && (
-                          <p class="text-xs text-gray-500 mt-1 line-clamp-2 leading-relaxed mb-2">
-                            {note.excerpt}
-                          </p>
-                        )}
-
-                        <Show when={note.tags && note.tags.length > 0}>
-                          <div class="flex flex-wrap gap-1 mt-1.5 mb-2">
-                            <For each={note.tags}>
-                              {(tag) => (
-                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-neutral-100 opacity-90" style={{ color: tag.color ?? "#374151" }}>
-                                  <Tag size={10} class="mr-0.5" />
-                                  {tag.name}
-                                </span>
-                              )}
-                            </For>
+                          <div class="text-xs text-gray-400 flex justify-between items-center mt-1">
+                            <span>{note.word_count} word{note.word_count !== 1 ? "s" : ""}</span>
+                            <span>{new Date(note.updated_at).toLocaleDateString()}</span>
                           </div>
-                        </Show>
 
-                        <div class="text-xs text-gray-400 flex justify-between items-center mt-1">
-                          <span>{note.word_count} word{note.word_count !== 1 ? "s" : ""}</span>
-                          <span>{new Date(note.updated_at).toLocaleDateString()}</span>
-                        </div>
-
-                        <Show when={sidebarView() === "trash"}>
-                          <div class="absolute top-2 right-4 flex items-center gap-2 bg-white/80 backdrop-blur-xs p-0.5 rounded-md shadow-xs">
-                            <button onClick={(e) => { e.stopPropagation(); restoreNote(note.id); }} class="text-neutral-500 hover:text-neutral-800 p-0.5 rounded-md transition-colors cursor-pointer">
-                              <RotateCcw size={14} />
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }} class="text-red-400 hover:text-red-600 p-0.5 rounded-md transition-colors cursor-pointer">
-                              <Trash size={14} />
-                            </button>
-                          </div>
-                        </Show>
-                      </button>
-                    </Motion.div>
-                  )}
-                </For>
+                          <Show when={sidebarView() === "trash"}>
+                            <div class="absolute top-2 right-4 flex items-center gap-2 bg-white/80 backdrop-blur-xs p-0.5 rounded-md shadow-xs">
+                              <button onClick={(e) => { e.stopPropagation(); { void restoreNote(note.id); } }} class="text-neutral-500 hover:text-neutral-800 p-0.5 rounded-md transition-colors cursor-pointer">
+                                <RotateCcw size={14} />
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); { void deleteNote(note.id); } }} class="text-red-400 hover:text-red-600 p-0.5 rounded-md transition-colors cursor-pointer">
+                                <Trash size={14} />
+                              </button>
+                            </div>
+                          </Show>
+                        </button>
+                      </div>
+                    )}
+                  </For>
+                </TransitionGroup>
               </Show>
             </Show>
           </div>
@@ -254,13 +292,13 @@ export function NoteList() {
               >
                 <Show when={sidebarView() !== "trash"} fallback={
                   <div class="w-full flex flex-col">
-                    <button onClick={() => { restoreNote(menu().noteId); closeContextMenu(); }}>
+                    <button onClick={() => { void restoreNote(menu().noteId); closeContextMenu(); }}>
                       <span class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors flex items-center gap-2">
                         <RotateCcw size={16} />
                         Restaurer
                       </span>
                     </button>
-                    <button onClick={() => { deleteNote(menu().noteId); closeContextMenu(); }}>
+                    <button onClick={() => { void deleteNote(menu().noteId); closeContextMenu(); }}>
                       <span class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors flex items-center gap-2 text-red-600">
                         <Trash size={16} />
                         Supprimer
@@ -271,7 +309,7 @@ export function NoteList() {
                   <button
                     class="w-full text-left px-4 py-2 hover:bg-gray-100 transition-colors"
                     onClick={() => {
-                      openNote(menu().noteId);
+                      void openNote(menu().noteId);
                       window.dispatchEvent(new Event("focus-note-title"));
                       closeContextMenu();
                     }}
@@ -281,7 +319,7 @@ export function NoteList() {
                   <button
                     class="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 transition-colors"
                     onClick={() => {
-                      trashActiveNote(menu().noteId);
+                      void trashActiveNote(menu().noteId);
                       closeContextMenu();
                     }}
                   >
@@ -293,7 +331,7 @@ export function NoteList() {
                     onClick={() => {
                       const targetNote = notes.find(n => n.id === menu().noteId);
                       if (targetNote) {
-                        togglePin(targetNote.id, targetNote.is_pinned);
+                        void togglePin(targetNote.id, targetNote.is_pinned);
                       }
                       closeContextMenu();
                     }}

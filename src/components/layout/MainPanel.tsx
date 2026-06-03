@@ -18,6 +18,9 @@ export function MainPanel() {
   // Signal pour gérer l'ouverture du modal de tags
   const [isTagMenuOpen, setIsTagMenuOpen] = createSignal(false);
 
+  // Scroll
+  const [scrollRatio, setScrollRatio] = createSignal<number>(0);
+
   let titleInputRef!: HTMLInputElement;
   let tagInputRef!: HTMLInputElement;
 
@@ -60,7 +63,7 @@ export function MainPanel() {
 
   const handleAddTag = async () => {
     const note = activeNote();
-    if (valueTag().trim() !== "" && note.id) {
+    if (valueTag().trim() !== "" && note?.id) {
       try {
         await addTagToNote(note.id, valueTag().trim(), tagColor(valueTag().trim()));
         setValueTag(""); // On vide l'input après ajout
@@ -72,9 +75,9 @@ export function MainPanel() {
 
   const handleRemoveTag = async (tagId: string) => {
     const note = activeNote();
-    if (note.id) {
+    if (note?.id) {
       try {
-        await removeTagFromNote(note?.id, tagId);
+        await removeTagFromNote(note.id, tagId);
       } catch (error) {
         console.error("Error removing tag from note:", error);
       }
@@ -99,7 +102,7 @@ export function MainPanel() {
             />
           </div>
 
-          <div class="relative flex items-center tooltip tooltip-bottom" data-tip={activeNote()?.tags && activeNote().tags.length > 0 ? activeNote().tags.length : "No tags"}>
+          <div class="relative flex items-center tooltip tooltip-bottom" data-tip={activeNote()?.tags && activeNote().tags.length > 0 ? activeNote()?.tags.length : "No tags"}>
             <button
               onClick={() => setIsTagMenuOpen(!isTagMenuOpen())}
               class="flex items-center justify-center p-1.5 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
@@ -132,7 +135,7 @@ export function MainPanel() {
                           style={{ "background-color": tag.color || "#e5e7eb" }}
                         >
                           {tag.name || tag}
-                          <button onClick={() => handleRemoveTag(tag.id)}>
+                          <button onClick={() => void handleRemoveTag(tag.id)}>
                             <Trash size={12} class="text-white" />
                           </button>
                         </span>
@@ -162,7 +165,7 @@ export function MainPanel() {
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           e.preventDefault();
-                          if (valueTag().trim() !== "") handleAddTag();
+                          if (valueTag().trim() !== "") void handleAddTag();
                         } else if (e.key === "Escape") {
                           setIsTagMenuOpen(false);
                         }
@@ -200,13 +203,13 @@ export function MainPanel() {
           <Show when={editorMode() === "editor" || editorMode() === "split"}>
             <div class={editorMode() === "split" ? "w-1/2 border-r border-gray-200" : "w-full"}>
               <div class="flex-1 relative min-w-0 h-full">
-                <MarkdownEditor />
+                <MarkdownEditor onScroll={setScrollRatio} />
               </div>
             </div>
           </Show>
           <Show when={editorMode() === "preview" || editorMode() === "split"}>
             <div class={editorMode() === "split" ? "w-1/2" : "w-full"}>
-              <MarkdownPreview />
+              <MarkdownPreview scrollRatio={scrollRatio} />
             </div>
           </Show>
         </div>

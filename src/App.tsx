@@ -5,7 +5,7 @@ import { TitleBar } from "@components/layout/TitleBar";
 import { error, openNote } from "@stores/notesStore";
 import { tooltip, setShowShortcutsPanel, showShortcutsPanel } from "@stores/uiStore";
 import type { Component } from 'solid-js'
-import { onMount, Show } from 'solid-js';
+import { createSignal, onMount, Show } from 'solid-js';
 import { loadAll } from './stores/notesStore';
 import { Presence, Motion } from 'solid-motionone';
 import { useKeyboardShortcuts } from '@hooks/useKeyboardShortcuts';
@@ -36,7 +36,7 @@ const App: Component = () => {
   return (
     <div class="flex flex-col h-screen w-screen overflow-hidden bg-white text-gray-900 font-sans">
       <TitleBar />
-      <div class="flex flex-1 overflow-hidden relative">
+      <div class="flex flex-1 overflow-hidden relative transition-all duration-300 ease-in-out">
         <Presence exitBeforeEnter>
           <Show when={error()}>
             <Motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: 10 }} class="absolute bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded shadow-lg z-50">

@@ -1,4 +1,4 @@
-import { createMemo, createResource, onCleanup } from "solid-js";
+import { createEffect, createMemo, createResource, onCleanup } from "solid-js";
 import { activeNote, saveNote } from "../../stores/notesStore";
 import { unified } from "unified";
 import remarkParse from "remark-parse";
@@ -13,76 +13,17 @@ import remarkHighlight from "rehype-highlight";
 import rehypeKatex from "rehype-katex";
 import rehypeRaw from "rehype-raw";
 import remarkDirective from "remark-directive";
-import remarkImages from "remark-images";
-import remarkEmbedImages from "remark-embed-images";
 
-import { visit } from "unist-util-visit";
+import { rehypeEnableCheckboxes, rehypeLocalImages, rehypeCopyButton } from "@utils/rehypePlugins"
 
 import "highlight.js/styles/github.css";
 import "@styles/preview.css";
 import "katex/dist/katex.css";
-import { convertFileSrc } from "@tauri-apps/api/core";
 
-
-// Plugins 
-function rehypeEnableCheckboxes() {
-  return (tree: any) => {
-    visit(tree, "element", (node: any) => {
-      if (
-        node.tagName === "input" &&
-        node.properties?.type === "checkbox"
-      ) {
-        // Retire disabled
-        delete node.properties.disabled;
-        // Ajoute un style cursor pointer
-        node.properties.style = "cursor: pointer;";
-      }
-    });
-  };
+interface MarkdownPreviewProps {
+  scrollRatio?: () => number;
 }
 
-function rehypeLocalImages() {
-  return (tree: any) => {
-    visit(tree, "element", (node: any) => {
-      if (node.tagName !== "img") return;
-
-      const src = node.properties?.src as string;
-      if (!src) return;
-
-      if (
-        src.startsWith("http://") ||
-        src.startsWith("https://") ||
-        src.startsWith("data:") ||
-        src.startsWith("blob:") ||
-        src.startsWith("asset:")
-      ) return;
-
-      // Décode toutes les couches d'encodage
-      let decoded = src;
-      try {
-        let prev = "";
-        while (prev !== decoded) {
-          prev = decoded;
-          decoded = decodeURIComponent(decoded);
-        }
-      } catch {
-        decoded = src;
-      }
-
-      // ← Supprime les guillemets parasites
-      decoded = decoded.replace(/^["']|["']$/g, "").trim();
-
-      // Normalise les slashes Windows
-      const normalized = decoded.replace(/\\/g, "/");
-
-      try {
-        node.properties.src = convertFileSrc(normalized);
-      } catch (e) {
-        console.error("convertFileSrc error:", e);
-      }
-    });
-  };
-}
 
 const processor = unified()
   .use(remarkParse)
@@ -97,13 +38,16 @@ const processor = unified()
   .use(rehypeRaw)
   .use(rehypeEnableCheckboxes)
   .use(rehypeLocalImages)
+  .use(rehypeCopyButton)
   .use(rehypeKatex)
   .use(remarkDirective)
   .use(remarkHighlight, { detect: true })
   .use(rehypeStringify);
 
-export function MarkdownPreview() {
+export function MarkdownPreview(props: MarkdownPreviewProps) {
   let containerRef!: HTMLDivElement;
+  let isCrolling = false;
+
   const content = createMemo(() => activeNote()?.content ?? "");
 
   const [html] = createResource(content, async (md) => {
@@ -132,9 +76,20 @@ export function MarkdownPreview() {
     // Trouve et toggle la Nth occurrence de "- [ ]" ou "- [x]" dans le markdown
     const updated = toggleCheckboxInMarkdown(note.content, checkboxIndex);
     if (updated !== null) {
-      saveNote(note.id, { content: updated });
+      void saveNote(note.id, { content: updated });
     }
   };
+
+  createEffect(() => {
+    const ratio = props.scrollRatio?.();
+    if (ratio === undefined || isCrolling) return;
+
+    const el = containerRef;
+    if (!el) return;
+
+    const maxScroll = el.scrollHeight - el.clientHeight;
+    el.scrollTop = ratio * maxScroll;
+  })
 
   return (
     <div
@@ -156,7 +111,7 @@ export function MarkdownPreview() {
 function toggleCheckboxInMarkdown(content: string, index: number): string | null {
   let count = -1;
 
-  const result = content.replace(/^(\s*[-*+]\s*)\[([ xX])\]/gm, (match, prefix, state) => {
+  const result = content.replace(/^(\s*[-*+]\s*)\[([ xX])\]/gm, (match, prefix, state: string) => {
     count++;
     if (count === index) {
       const isChecked = state.toLowerCase() === "x";

@@ -41,4 +41,4 @@ export type Tag = {
 
 export type EditorMode = "editor" | "preview" | "split";
 
-export type SidebarView = "all" | "notebook" | "tag" | "trash";
+export type SidebarView = "all" | "notebook" | "tag" | "trash" | "pinned";

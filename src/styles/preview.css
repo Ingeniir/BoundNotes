@@ -74,6 +74,10 @@ code {
   pointer-events: none;
 }
 
+.prose pre.group:hover::before {
+  display: none;
+}
+
 /* On détecte la classe du langage */
 .prose pre:has(code.language-python)::before { content: "Python"; }
 .prose pre:has(code.language-rust)::before { content: "Rust"; }

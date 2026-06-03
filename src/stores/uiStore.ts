@@ -5,6 +5,9 @@ import type { EditorMode, SidebarView } from "../types";
 const [showListNotes, setShowListNotes] = createSignal<boolean>(true);
 export { showListNotes, setShowListNotes };
 
+const [showSidebar, setShowSidebar] = createSignal<boolean>(true);
+export { showSidebar, setShowSidebar };
+
 
 // Thème
 const [theme, setTheme] = createSignal<"light" | "dark">("light");

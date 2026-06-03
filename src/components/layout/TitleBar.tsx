@@ -42,7 +42,7 @@ export function TitleBar() {
 
             <div class="flex items-center h-full">
                 <WindowButton
-                    onClick={minimize}
+                    onClick={() => void minimize()}
                     label="Minimize"
                     class="hover:bg-gray-200"
                 >
@@ -50,7 +50,7 @@ export function TitleBar() {
                 </WindowButton>
 
                 <WindowButton
-                    onClick={toggleMaximize}
+                    onClick={() => void toggleMaximize()}
                     label={isMaximized() ? "Restaurer" : "Maximiser"}
                     class="hover:bg-gray-200"
                 >
@@ -61,7 +61,7 @@ export function TitleBar() {
                 </WindowButton>
 
                 <WindowButton
-                    onClick={close}
+                    onClick={() => void close()}
                     label="Fermer"
                     class="hover:bg-red-500 hover:text-white"
                 >

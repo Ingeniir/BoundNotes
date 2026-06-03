@@ -1,5 +1,5 @@
 import { onCleanup, onMount } from "solid-js";
-import { setShowListNotes, showListNotes, setEditorMode, setShowShortcutsPanel } from "@stores/uiStore";
+import { setShowListNotes, showListNotes, setShowSidebar, setEditorMode, setShowShortcutsPanel, showSidebar } from "@stores/uiStore";
 import { newNote, trashActiveNote, activeNote } from "@stores/notesStore";
 import { activeSidebarId, sidebarView } from "@stores/uiStore";
 
@@ -18,6 +18,12 @@ const shortcuts: Shortcut[] = [
         key: "b",
         ctrl: true,
         description: "Afficher/masquer la liste des notes",
+        action: () => setShowSidebar(!showSidebar()),
+    },
+    {
+        key: "l",
+        ctrl: true,
+        description: "Afficher/masquer la barre latérale",
         action: () => setShowListNotes(!showListNotes()),
     },
     // -- Éditeur -----------------------------------
@@ -49,7 +55,7 @@ const shortcuts: Shortcut[] = [
         description: "Nouvelle note",
         action: () => {
             const nbId = sidebarView() === "notebook" ? activeSidebarId() ?? undefined : undefined;
-            newNote(nbId);
+            void newNote(nbId);
         },
     },
     {
@@ -58,7 +64,7 @@ const shortcuts: Shortcut[] = [
         description: "Mettre la note active à la corbeille",
         action: () => {
             const note = activeNote();
-            if (note) trashActiveNote(note.id);
+            if (note) void trashActiveNote(note.id);
         },
     },
 
