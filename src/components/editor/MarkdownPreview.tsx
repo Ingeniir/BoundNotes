@@ -46,7 +46,7 @@ const processor = unified()
 
 export function MarkdownPreview(props: MarkdownPreviewProps) {
   let containerRef!: HTMLDivElement;
-  let isCrolling = false;
+  const isCrolling = false;
 
   const content = createMemo(() => activeNote()?.content ?? "");
 

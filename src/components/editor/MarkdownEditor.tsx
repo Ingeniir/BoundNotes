@@ -27,7 +27,6 @@ import { autocompletion, closeBracketsKeymap, completionKeymap } from "@codemirr
 import { toggleCodeBlock, toggleHeading, toggleInlineMarkdown, toggleURL, toggleBulletAndCheckedList } from "@utils/keymapCodeMirror"
 import { checkboxColorPlugin, checkboxPointerPlugin, rustFunctionPlugin, pointerDecoration, detectBalise } from "@utils/codemirrorPlugins"
 
-import "@styles/editor.css"
 
 interface MarkdownEditorProps {
   onScroll?: (ratio: number) => void;

@@ -60,6 +60,7 @@ boundnotes/
 │   │   ├── editor/
 │   │   │   ├── MarkdownEditor.tsx   # CodeMirror editor
 │   │   │   └── MarkdownPreview.tsx  # Remark/rehype renderer
+│   │   ├── modals/   # Modal Components
 │   │   └── ui/                 # Reusable UI components
 │   ├── stores/
 │   │   ├── notesStore.ts       # Notes, notebooks, tags state
@@ -70,10 +71,14 @@ boundnotes/
 │   ├── lib/
 │   │   ├── tauri.ts            # Typed Tauri invoke wrappers
 │   │   ├── persistence.ts      # Last note persistence via plugin-store
-│   │   └── notebookTree.ts     # Flat → tree structure builder
+│   │   ├── notebookTree.ts     # Flat → tree structure builder
+│   │   └── citation.ts         # Random citations
+│   ├── styles/   # Styles container
 │   ├── utils/
-│   │   ├── rehypePlugins.ts    # Custom rehype plugins
-│   │   └── keymapCodeMirror.ts # Custom CodeMirror keybindings
+│   │   ├── rehypePlugins.ts     # Custom rehype plugins
+│   │   ├── codemirrorPlugins.ts # Custom CodeMirror plugins
+│   │   ├── colorTag.ts          # Random color tag 
+│   │   └── keymapCodeMirror.ts  # Custom CodeMirror keybindings
 │   └── types/
 │       └── index.ts            # Shared TypeScript types
 │
@@ -117,13 +122,14 @@ schema_migrations — version tracking
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl + B` | Toggle note list |
+| `Ctrl + B` | Toggle sidebar |
+| `Ctrl + L` | Toggle note list |
 | `Ctrl + N` | New note |
 | `Ctrl + Shift + E` | Editor mode |
 | `Ctrl + Shift + P` | Preview mode |
 | `Ctrl + Shift + S` | Split mode |
 | `Ctrl + Delete` | Trash active note |
-| `Ctrl + /` | Show shortcuts panel |
+| `Ctrl + ,` | Show shortcuts panel |
 | `Ctrl + B` | Bold (in editor) |
 | `Ctrl + I` | Italic (in editor) |
 | `Ctrl + 1-4` | Heading 1–4 (in editor) |
@@ -171,6 +177,8 @@ The output binary will be in `src-tauri/target/release/`.
 **Content separated from metadata** — `note_contents` is a separate table from `notes`. The note list only loads metadata (title, excerpt, word count, tags), and the full content is fetched only when a note is opened. This keeps the list fast regardless of note size.
 
 **FTS5 with triggers** — Full-text search is maintained automatically via SQLite triggers on `note_contents` inserts, updates, and deletes. No manual index management needed.
+
+**Oxlint & Eslint** - Format and search error in differents files.
 
 ---
 
