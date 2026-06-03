@@ -4,6 +4,7 @@
 import eslint from '@eslint/js';
 import prettierConfig from 'eslint-config-prettier';
 import tseslint from 'typescript-eslint';
+import oxlint from 'eslint-plugin-oxlint';
 
 export default tseslint.config(
   eslint.configs.recommended,
@@ -17,4 +18,5 @@ export default tseslint.config(
     },
   },
   prettierConfig,
+  ...oxlint.configs['flat/recommended'],
 );

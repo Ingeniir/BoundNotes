@@ -13,7 +13,13 @@
     "prettier:fix": "prettier src -w",
     "eslint": "eslint src",
     "eslint:fix": "eslint src --fix",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "lint": "oxlint && eslint .",
+    "lint:oxlint": "oxlint",
+    "lint:eslint": "eslint .",
+    "lint:fix": "oxlint --fix",
+    "lint:fast": "oxlint",
+    "lint:full": "eslint"
   },
   "license": "MIT",
   "devDependencies": {
@@ -24,7 +30,9 @@
     "daisyui": "^5.5.20",
     "eslint": "10.4.0",
     "eslint-config-prettier": "10.1.8",
+    "eslint-plugin-oxlint": "^1.68.0",
     "lightningcss": "1.32.0",
+    "oxlint": "^1.68.0",
     "prettier": "3.8.3",
     "prettier-eslint-cli": "8.0.1",
     "prettier-plugin-tailwindcss": "0.8.0",
