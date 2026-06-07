@@ -1,9 +1,8 @@
 import { onMount, onCleanup, createEffect } from "solid-js";
 import { activeNote } from "@stores/notesStore";
-import { setEditorMode } from "@stores/uiStore";
 import { useAutoSave } from "@hooks/useAutoSave";
 import { EditorView } from "codemirror";
-import { ViewPlugin, DecorationSet, Decoration, ViewUpdate } from "@codemirror/view"
+import { Decoration } from "@codemirror/view"
 import { markdown } from "@codemirror/lang-markdown";
 import { EditorState, RangeSetBuilder } from "@codemirror/state";
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -115,7 +114,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
               // Détecte une case à cocher en début de ligne
               const match = line.text.match(/^(\s*[-*+]\s*)(\[\s?x?\s?\])/i);
 
-              let newDecorations = Decoration.none;
+              let _newDecorations = Decoration.none;
 
               if (match) {
                 const prefixLength = match[1].length;
@@ -126,7 +125,7 @@ export function MarkdownEditor(props: MarkdownEditorProps) {
 
                   const builder = new RangeSetBuilder<Decoration>();
                   builder.add(line.from + prefixLength, line.from + prefixLength + boxLength, pointerDecoration);
-                  newDecorations = builder.finish();
+                  _newDecorations = builder.finish();
 
                   const from = line.from + prefixLength;
                   const isChecked = match[2].toLowerCase().includes("x");

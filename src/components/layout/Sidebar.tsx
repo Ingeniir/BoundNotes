@@ -1,10 +1,17 @@
-import { For, Show, createSignal, createMemo, type JSX } from "solid-js";
-import { notebooks, newNotebook, removeNotebook, loadNotes, lengthNotes, tags, loadNotesByTag, removeTag, loadPinnedNotes, lengthNotesPinned } from "@stores/notesStore";
+import { For, Show, createSignal, createMemo, type JSX, createEffect } from "solid-js";
+import { notebooks, newNotebook, loadNotes, lengthNotes, tags, loadNotesByTag, removeTag, loadPinnedNotes, lengthNotesPinned, lengthNotesTrashed, removeNotebook } from "@stores/notesStore";
 import {
   sidebarView, setSidebarView,
   activeSidebarId, setActiveSidebarId,
   theme, toggleTheme,
-  setActiveTagId, showSidebar
+  setActiveTagId, showSidebar,
+  contextMenu, setContextMenu, closeContextMenu,
+  renamingNotebook,
+  valueInputNotebook, setValueInputNotebook,
+  confirmRename,
+  cancelRename,
+  handleRename,
+  setGroupByNotebook
 } from "@stores/uiStore";
 import { buildNotebookTree } from "@lib/notebookTree";
 import type { NotebookNode } from "../../types";
@@ -15,11 +22,10 @@ import {
   ChevronRight, Check, X,
   Folder,
   FolderOpen,
-  Tag,
   Pin
 } from "lucide-solid";
 import Notebook from "lucide-solid/icons/notebook";
-import { tagColor } from "@utils/colorTag";
+import { ContextMenu, ContextMenuItem } from "@components/ui/ContextMenu";
 
 export function Sidebar() {
   const tree = createMemo(() => buildNotebookTree(notebooks));
@@ -44,6 +50,7 @@ export function Sidebar() {
               active={sidebarView() === "all"}
               onClick={() => {
                 setSidebarView("all");
+                setGroupByNotebook(false);
                 setActiveSidebarId(null);
                 void loadNotes();
               }}
@@ -56,6 +63,7 @@ export function Sidebar() {
               active={sidebarView() === "pinned"}
               onClick={() => {
                 setSidebarView("pinned");
+                setGroupByNotebook(false);
                 setActiveSidebarId(null);
                 void loadPinnedNotes();
               }}
@@ -120,9 +128,11 @@ export function Sidebar() {
                 active={sidebarView() === "trash"}
                 onClick={() => {
                   setSidebarView("trash");
+                  setGroupByNotebook(false);
                   setActiveSidebarId(null);
                   void loadNotes(undefined, true);
                 }}
+                counter={lengthNotesTrashed()}
               />
             </div>
 
@@ -135,6 +145,18 @@ export function Sidebar() {
             </button>
           </div>
         </Motion.aside >
+      </Show>
+      <Show when={contextMenu()?.source === "notebook" ? contextMenu() : null}>
+        {(menu) => (
+          <ContextMenu x={menu().x} y={menu().y} onClose={closeContextMenu}>
+            <ContextMenuItem onClick={() => { /* renommer notebook */ handleRename(menu().node!); closeContextMenu(); }}>
+              Renommer
+            </ContextMenuItem>
+            <ContextMenuItem danger onClick={() => { /* supprimer notebook */ void removeNotebook(menu().id); closeContextMenu(); }}>
+              <Trash size={16} /> Supprimer
+            </ContextMenuItem>
+          </ContextMenu>
+        )}
       </Show>
     </Presence>
   );
@@ -252,10 +274,22 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
   // Indentation selon la profondeur
   const indent = () => props.depth * 12;
 
+  const handleContextMenu = (e: MouseEvent, id: string) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, id, source: "notebook", node: props.node });
+  };
+
+  createEffect(() => {
+    if (renamingNotebook() && activeSidebarId() === props.node.id) {
+      setTimeout(() => inputRef?.focus(), 100);
+    }
+  })
+
   return (
     <div>
       {/* Ligne du notebook */}
       <div
+        onContextMenu={(e) => { handleContextMenu(e, props.node.id) }}
         class={clsx(
           "group flex items-center gap-1 px-2 py-1.5 rounded-md text-sm transition-colors cursor-pointer",
           isActive()
@@ -265,7 +299,6 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
         style={{ "padding-left": `${8 + indent()}px` }}
         onClick={handleClick}
       >
-        {/* Chevron expand/collapse */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -280,11 +313,37 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
           <ChevronRight size={13} />
         </button>
 
-        {/* Icône + nom */}
-        <span class="text-sm shrink-0">
-          {props.node.icon ?? (props.node.children.length > 0 ? (expanded() ? <FolderOpen size={14} class="text-gray-400" /> : <Folder size={14} class="text-gray-400" />) : <Notebook size={14} class="text-gray-400" />)}
-        </span>
-        <span class="truncate flex-1">{props.node.name}</span>
+        <Show
+          when={renamingNotebook() && activeSidebarId() === props.node.id}
+          fallback={
+            <>
+              <span class="text-sm shrink-0">
+                {props.node.icon ?? (props.node.children.length > 0
+                  ? (expanded() ? <FolderOpen size={14} class="text-gray-400" /> : <Folder size={14} class="text-gray-400" />)
+                  : <Notebook size={14} class="text-gray-400" />
+                )}
+              </span>
+              <span class="truncate flex-1">{props.node.name}</span>
+            </>
+          }
+        >
+          <div class="flex items-center gap-1 px-2 py-1 rounded-md bg-white border border-gray-200 shadow-sm">
+            <span class="text-sm shrink-0">
+              <Notebook size={14} class="text-gray-400" />
+            </span>
+            <input
+              ref={inputRef}
+              class="flex-1 text-sm bg-white border-b border-gray-200 px-1 outline-none w-30"
+              value={valueInputNotebook()}
+              onInput={(e) => setValueInputNotebook(e.currentTarget.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void confirmRename(props.node);
+                if (e.key === "Escape") cancelRename();
+              }}
+              onBlur={() => void confirmRename(props.node)}
+            />
+          </div>
+        </Show>
 
         {/* Actions (visibles au hover) */}
         <div class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
@@ -295,21 +354,25 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
           >
             <Plus size={12} />
           </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              void removeNotebook(props.node.id);
-            }}
-            title="Supprimer"
-            class="p-0.5 rounded hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
-          >
-            <Trash size={12} />
-          </button>
         </div>
-      </div>
+        <Presence exitBeforeEnter>
+          <Show when={props.node.children.length > 0 && !expanded()}>
+            <Motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              class="flex items-center cursor-default"
+            >
+              <span class="text-xs text-gray-400">{props.node.children.length}</span>
+            </Motion.div>
+          </Show>
+        </Presence>
+      </div >
 
       {/* Enfants + input création */}
-      <Show when={expanded() && hasChildren()}>
+      < Show when={expanded() && hasChildren()
+      }>
         <div class="relative">
           {/* Ligne verticale de branche */}
           <div
@@ -345,8 +408,8 @@ function NotebookTreeItem(props: { node: NotebookNode; depth: number }) {
             {(child) => <NotebookTreeItem node={child} depth={props.depth + 1} />}
           </For>
         </div>
-      </Show>
-    </div>
+      </Show >
+    </div >
   );
 }
 

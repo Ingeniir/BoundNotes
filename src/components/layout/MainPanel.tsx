@@ -125,7 +125,7 @@ export function MainPanel() {
                     fallback={<span class="text-xs text-gray-400 italic">No tags active</span>}
                   >
                     <span class="text-lg font-medium text-gray-700">Tags actifs: </span>
-                    <For each={activeNote().tags.filter((tag, i, arr) =>
+                    <For each={activeNote()?.tags.filter((tag, i, arr) =>
                       arr.findIndex(t => t.id === tag.id) === i
                     )}>
                       {(tag) => (

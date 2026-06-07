@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 import { createStore, produce, reconcile } from "solid-js/store";
 import type { Note, NoteWithContent, Notebook, Tag } from "../types";
 import * as api from "@lib/tauri";
@@ -12,12 +12,17 @@ const [tags, setTags] = createStore<Tag[]>([]);
 const [activeNote, setActiveNote] = createSignal<NoteWithContent | null>(null);
 const [activeTags, setActiveTags] = createSignal<Tag[]>([]);
 const [loading, setLoading] = createSignal<boolean>(false);
-const [lengthNotes, setLengthNotes] = createSignal<number>(0);
-const [lengthNotesPinned, setLengthNotesPinned] = createSignal<number>(0);
+
+const [allNotes, setAllNotes] = createStore<Note[]>([]);
+
+// Compteurs dérivés automatiquement
+export const lengthNotes = createMemo(() => allNotes.filter(n => !n.is_trashed).length);
+export const lengthNotesPinned = createMemo(() => allNotes.filter(n => n.is_pinned && !n.is_trashed).length);
+export const lengthNotesTrashed = createMemo(() => allNotes.filter(n => n.is_trashed).length);
 
 const [error, setError] = createSignal<string | null>(null);
 
-export { notes, notebooks, tags, activeNote, loading, lengthNotes, error, activeTags, lengthNotesPinned };
+export { notes, notebooks, tags, activeNote, loading, error, activeTags };
 
 let currentSearchId = 0;
 
@@ -34,8 +39,7 @@ export const loadAll = async () => {
     setNotebooks(reconcile(nb));
     setTags(reconcile(t));
 
-    setLengthNotes(n.length);
-    setLengthNotesPinned(n.filter(note => note.is_pinned).length);
+    setAllNotes(reconcile(n));
   } catch (e) {
     console.error("Échec du chargement initial :", e);
     setError("Impossible de charger les données.");
@@ -45,19 +49,37 @@ export const loadAll = async () => {
 };
 
 // ── Notes ──────────────────────────────────────────────
-export const loadNotes = async (notebook_id?: string, trashed = false, tag_id?: string) => {
+export const loadNotes = async (notebook_id?: string, trashed = false) => {
   setError(null);
   try {
-    const n = await api.getNotes(notebook_id, trashed, tag_id);
-    setNotes(reconcile(n));
+    if (notebook_id) {
+      // Trouver tous les IDs des sous-notebooks récursivement
+      const allIds = getDescendantIds(notebook_id);
 
-    if (!notebook_id && !trashed) {
-      setLengthNotes(n.length);
+      // Charger les notes de tous ces notebooks en parallèle
+      const results = await Promise.all(
+        allIds.map(id => api.getNotes(id, trashed))
+      );
+
+      setNotes(reconcile(results.flat()));
+    } else {
+      const n = await api.getNotes(undefined, trashed);
+      setNotes(reconcile(n));
+      if (!trashed) setAllNotes(reconcile(n));
     }
   } catch (err) {
     console.error("Erreur loadNotes :", err);
     setError("Impossible de charger les notes.");
   }
+};
+
+const getDescendantIds = (id: string): string[] => {
+  const result = [id];
+  const children = notebooks.filter(nb => nb.parent_id === id);
+  for (const child of children) {
+    result.push(...getDescendantIds(child.id));
+  }
+  return result;
 };
 
 export const loadNotesByTag = async (tag_id: string) => {
@@ -76,7 +98,6 @@ export const loadPinnedNotes = async () => {
   try {
     const n = await api.getPinnedNotes();
     setNotes(reconcile(n));
-    setLengthNotesPinned(n.length);
   } catch (err) {
     console.error("Erreur loadPinnedNotes:", err);
     setError("Impossible de charger les notes épinglées.");
@@ -104,7 +125,7 @@ export const newNote = async (notebook_id?: string) => {
     setActiveNote(note);
     setActiveTags([]);
 
-    setLengthNotes(c => c + 1);
+    setAllNotes(produce(all => all.unshift(note)));
     return note;
   } catch (err) {
     console.error("Erreur newNote :", err);
@@ -159,7 +180,10 @@ export const trashActiveNote = async (id: string) => {
     setActiveNote(null);
     await persistLastNodeId(null);
 
-    setLengthNotes(c => c - 1);
+    setAllNotes(produce(all => {
+      const i = all.findIndex(n => n.id === id);
+      if (i !== -1) all[i].is_trashed = true;
+    }))
   } catch (err) {
     console.error("Erreur trashActiveNote:", err);
     setError("Impossible de mettre la note à la corbeille.");
@@ -171,7 +195,10 @@ export const restoreNote = async (id: string) => {
   try {
     await api.restoreNote(id);
 
-    setLengthNotes(c => c + 1);
+    setAllNotes(produce(notes => {
+      const i = notes.findIndex(n => n.id === id);
+      if (i !== -1) notes[i].is_trashed = false;
+    }));
 
     await loadNotes(undefined, true);
   } catch (err) {
@@ -185,6 +212,10 @@ export const deleteNote = async (id: string) => {
   try {
     await api.deleteNote(id);
     setNotes(produce(notes => {
+      const i = notes.findIndex(n => n.id === id);
+      if (i !== -1) notes.splice(i, 1);
+    }));
+    setAllNotes(produce(notes => {
       const i = notes.findIndex(n => n.id === id);
       if (i !== -1) notes.splice(i, 1);
     }));
@@ -240,18 +271,44 @@ export const removeNotebook = async (id: string) => {
   setError(null);
   try {
     await api.deleteNotebook(id);
+
+    setNotes(
+      (note) => note.notebook_id === id,
+      "is_trashed",
+      true
+    );
+
     setNotebooks(produce(nbs => {
       const i = nbs.findIndex(nb => nb.id === id);
       if (i !== -1) nbs.splice(i, 1);
     }));
 
-    const n = await api.getNotes();
-    setLengthNotes(n.length);
+    setAllNotes(produce(notes => {
+      for (const note of notes) {
+        if (note.notebook_id === id) {
+          note.is_trashed = true;
+        }
+      }
+    }));
+
+    if (activeNote()?.notebook_id === id) setActiveNote(null);
   } catch (err) {
     console.error("Erreur removeNotebook:", err);
     setError("La suppression du carnet a échoué.");
   }
 };
+
+export const updateNotebook = async (id: string, { name, icon }: { name: string, icon?: string }) => {
+  setError(null);
+  try {
+    await api.updateNotebook(id, { name, ...(icon && { icon }) });
+    const index = notebooks.findIndex(nb => nb.id === id);
+    if (index !== -1) setNotebooks(index, "name", name);
+  } catch (err) {
+    console.error("Erreur updateNotebook:", err);
+    setError("La mise à jour du carnet a échoué.");
+  }
+}
 
 // ── Gestion tags sur une note ──────────────────────────
 export const addTagToNote = async (noteId: string, tagName: string, color?: string) => {
@@ -345,8 +402,6 @@ export const removeTag = async (tagId: string) => {
       });
     }
 
-    setActiveTags(prev => prev.filter(t => t.id !== tagId));
-
     if (tags.length <= 0) {
       setSidebarView("all");
       setActiveSidebarId(null);
@@ -381,7 +436,11 @@ export const togglePin = async (id: string, currentStatus: boolean) => {
       if (activeNote()?.id === id) setActiveNote(null);
     }
 
-    setLengthNotesPinned(notes.filter(note => note.is_pinned).length);
+    setAllNotes(
+      (n) => n.id === id,
+      "is_pinned",
+      newStatus
+    )
   } catch (err) {
     console.error("Erreur togglePin:", err);
     setError("Impossible de changer le statut d'épingle.");

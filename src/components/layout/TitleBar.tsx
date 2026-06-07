@@ -34,7 +34,7 @@ export function TitleBar() {
             >
                 <span
                     data-tauri-drag-region
-                    class="text-xs text-gray-400 font-medium"
+                    class="text-gray-400 font-medium font-roboto-slab"
                 >
                     BoundNotes
                 </span>

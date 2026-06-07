@@ -1,12 +1,22 @@
 import { createSignal } from "solid-js";
-import type { EditorMode, SidebarView } from "../types";
+import type { EditorMode, NotebookNode, SidebarView } from "../types";
+import { activeNote, addTagToNote, updateNotebook } from "./notesStore";
+import { tagColor } from "@utils/colorTag";
 
 // UI State global
 const [showListNotes, setShowListNotes] = createSignal<boolean>(true);
 export { showListNotes, setShowListNotes };
 
 const [showSidebar, setShowSidebar] = createSignal<boolean>(true);
-export { showSidebar, setShowSidebar };
+const [sidebarOpen, setSidebarOpen] = createSignal(true);
+export { sidebarOpen, setSidebarOpen, showSidebar, setShowSidebar };
+
+// Context menu
+const [contextMenu, setContextMenu] = createSignal<{ x: number; y: number; id: string, source: "note" | "notebook", node?: NotebookNode } | null>(null);
+export { contextMenu, setContextMenu };
+
+const closeContextMenu = () => setContextMenu(null);
+export { closeContextMenu };
 
 
 // Thème
@@ -42,6 +52,57 @@ export { sidebarView, setSidebarView, activeSidebarId, setActiveSidebarId };
 const [searchQuery, setSearchQuery] = createSignal("");
 export { searchQuery, setSearchQuery };
 
-// Panneau sidebar ouvert/fermé
-const [sidebarOpen, setSidebarOpen] = createSignal(true);
-export { sidebarOpen, setSidebarOpen };
+
+const [groupByNotebook, setGroupByNotebook] = createSignal<boolean>(true);
+export { groupByNotebook, setGroupByNotebook };
+
+// Rename Notebook
+const [renamingNotebook, setRenamingNotebook] = createSignal<boolean>(false);
+export { renamingNotebook, setRenamingNotebook };
+const [valueInputNotebook, setValueInputNotebook] = createSignal<string>("");
+export { valueInputNotebook, setValueInputNotebook };
+
+export const handleRename = (node: NotebookNode) => {
+  setActiveSidebarId(node.id);
+  setRenamingNotebook(true);
+  setValueInputNotebook(node.name);
+}
+
+export const cancelRename = () => {
+  setRenamingNotebook(false);
+  setValueInputNotebook("");
+}
+
+export const confirmRename = async (node: NotebookNode) => {
+  const name = valueInputNotebook().trim();
+  if (name && name !== node.name && node.id) {
+    await updateNotebook(node.id, { name });
+  }
+  cancelRename();
+}
+
+export const [modeSort, setModeSort] = createSignal<"title" | "date" | "updated">("title");
+export const [isReversed, setIsReversed] = createSignal<boolean>(false);
+
+export const [addTagInput, setAddTagInput] = createSignal<boolean>(false);
+export const [valueTagInput, setValueTagInput] = createSignal<string>("");
+export const [tagColorValue, setTagColorValue] = createSignal<string>("");
+
+export const [tagTargetId, setTagTargetId] = createSignal<string | null>(null);
+
+export const cancelTagInput = () => {
+  setAddTagInput(false);
+  setValueTagInput("");
+  setTagTargetId(null)
+};
+
+export const getValueTagInput = (value: string) => {
+  const tagColorValue = tagColor(value);
+  setValueTagInput(value);
+  setTagColorValue(tagColorValue);
+}
+
+export const handleAddTag = async (noteId: string) => {
+  const tag = await addTagToNote(noteId, valueTagInput().trim(), tagColorValue());
+  if (tag) cancelTagInput();
+};
