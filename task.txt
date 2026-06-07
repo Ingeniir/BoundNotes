@@ -1,0 +1,10 @@
+(A) 2026-06-08 En vue notebook sans Layers actif, n'afficher que les notes directes du notebook sélectionné (pas les notes des sous-notebooks) +desktop
+(A) 2026-06-08 removeNotebook: les notes doivent passer en is_trashed=true côté backend avant d'être marquées côté store, et appraître dans la Trash correctement. +desktop
+(C) 2026-06-08 Déplacer une note vers un autre notebook (drag & drop ou modal) +desktop
+(B) 2026-06-08 Vider la corbeille en un clic +desktop
+(B) 2026-06-08 Confirmation avant suppression définitive d'une note ou d'un notebook +desktop
+(B) 2026-06-08 Toast/notification après actions importantes (sauvegarde, suppression, restauration) +desktop
+(C) 2026-06-08 État vide plus expressif quand un notebook est vide. +desktop
+(A) 2026-06-08 Persister modeSort et isReversed dans localStorage. +desktop
+(A) 2026-06-08 Persister groupByNotebook par notebook dans localStorage +desktop
+(B) 2026-06-08 Gérer les erreurs API avec affichage utilisateur +desktop
